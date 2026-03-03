@@ -2,16 +2,14 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-NewsFlow.ai 是一个 AI 驱动的新闻聚合与推送助手。它从十几个中文媒体 RSS 源自动抓取内容，
-经过两级过滤（代码规则层 + AI 语义层），压缩成每天 8 条高质量摘要 + 10 条快速查阅的内容，
-通过邮件主动推送或对话即时查询送达用户。
+NewsFlow.ai 是一款由 AI 驱动的新闻聚合与推送助手。它从16个中文主流媒体 RSS 源自动抓取内容，经过两级过滤，压缩成每日 8 条高质量摘要 + 10 条快速查阅的简报内容，通过邮件推送或对话查询的方式送达用户。
 
 ## 功能特点 (Features)
 
 - 🎯 **日报三大主题选择**：精准覆盖AI、财经、科技三大热门领域。
 - 📧 **每日新闻邮件测试发送**：支持实时发送指定主题的新闻简报测试邮件。
 - 💬 **Coze AI助手支持**：集成Coze Chat SDK，提供智能对话交互。
-- 🎨 **精美的响应式 UI**：采用 Tailwind CSS 构建的现代化、车载多端的 UI 界面。
+- 🎨 **精美的响应式 UI**：采用 Tailwind CSS 构建的现代化、多端适配的 UI 界面。
 
 ## 技术栈 (Tech Stack)
 
