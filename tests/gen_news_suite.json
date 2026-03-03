@@ -1,0 +1,41 @@
+{
+  "suite": {
+    "name": "gen_news_dedup_quality",
+    "version": "v1-2026-02-17",
+    "workflow_id": "7607639817783132201",
+    "notes": [
+      "测试AI主题邮件生成工作流的去重、信源丰富性、华尔街见闻占比",
+      "工作流输入只有 keyword，输出为 JSON（top_news + quick_news）",
+      "跑 3 次以检测去重稳定性"
+    ]
+  },
+  "cases": [
+    {
+      "id": "G01",
+      "intent": "去重+信源",
+      "scenario": "AI-第1次",
+      "inputs": { "keyword": "AI" },
+      "expect": {
+        "hard_checks": ["non_empty", "valid_json", "dedup", "source_diversity", "source_cap"]
+      }
+    },
+    {
+      "id": "G02",
+      "intent": "去重+信源",
+      "scenario": "AI-第2次",
+      "inputs": { "keyword": "AI" },
+      "expect": {
+        "hard_checks": ["non_empty", "valid_json", "dedup", "source_diversity", "source_cap"]
+      }
+    },
+    {
+      "id": "G03",
+      "intent": "去重+信源",
+      "scenario": "AI-第3次",
+      "inputs": { "keyword": "AI" },
+      "expect": {
+        "hard_checks": ["non_empty", "valid_json", "dedup", "source_diversity", "source_cap"]
+      }
+    }
+  ]
+}

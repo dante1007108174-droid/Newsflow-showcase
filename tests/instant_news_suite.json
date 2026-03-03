@@ -1,0 +1,308 @@
+{
+  "suite": {
+    "name": "instant_news_e2e",
+    "version": "v5-2026-02-07",
+    "workflow_id": "7603678313790652467",
+    "notes": [
+      "端到端测试：仅传 keyword + raw_query",
+      "默认5条，上限10条，条数/来源/语言从 raw_query 解析",
+      "所有用例都会走模型评估；可标记待抽查"
+    ]
+  },
+  "cases": [
+    {
+      "id": "T01",
+      "intent": "基础查询",
+      "scenario": "AI默认查询",
+      "inputs": {
+        "keyword": "AI",
+        "raw_query": "给我今天的AI新闻"
+      },
+      "expect": {
+        "hard_checks": ["non_empty", "format", "structure", "timeliness"],
+        "acceptance": "返回24小时内AI相关新闻，格式正确"
+      },
+      "manual_review": true
+    },
+    {
+      "id": "T02",
+      "intent": "条数限制",
+      "scenario": "AI指定3条",
+      "inputs": {
+        "keyword": "AI",
+        "raw_query": "给我3条AI新闻"
+      },
+      "expect": {
+        "hard_checks": ["non_empty", "format", "structure", "limit_max"],
+        "max_count": 3,
+        "acceptance": "返回不超过3条AI新闻，格式正确"
+      }
+    },
+    {
+      "id": "T03",
+      "intent": "条数限制",
+      "scenario": "AI指定1条",
+      "inputs": {
+        "keyword": "AI",
+        "raw_query": "就给我1条AI新闻"
+      },
+      "expect": {
+        "hard_checks": ["non_empty", "format", "structure", "limit_max"],
+        "max_count": 1,
+        "acceptance": "返回1条AI新闻，格式正确"
+      }
+    },
+    {
+      "id": "T04",
+      "intent": "来源过滤",
+      "scenario": "AI精确来源-虎嗅",
+      "inputs": {
+        "keyword": "AI",
+        "raw_query": "只看虎嗅的AI新闻"
+      },
+      "expect": {
+        "hard_checks": ["format", "source_only"],
+        "expected_source": "虎嗅",
+        "allow_empty": true,
+        "acceptance": "只返回虎嗅来源新闻，无匹配则输出空状态"
+      }
+    },
+    {
+      "id": "T05",
+      "intent": "来源过滤",
+      "scenario": "AI别名来源-36kr",
+      "inputs": {
+        "keyword": "AI",
+        "raw_query": "36kr的AI新闻"
+      },
+      "expect": {
+        "hard_checks": ["format", "source_only"],
+        "expected_source": "36氪",
+        "allow_empty": true,
+        "acceptance": "只返回36氪来源新闻，无匹配则输出空状态"
+      }
+    },
+    {
+      "id": "T06",
+      "intent": "来源过滤",
+      "scenario": "AI来源+条数",
+      "inputs": {
+        "keyword": "AI",
+        "raw_query": "华尔街见闻的AI新闻，2条"
+      },
+      "expect": {
+        "hard_checks": ["format", "source_only", "limit_max"],
+        "expected_source": "华尔街见闻",
+        "max_count": 2,
+        "allow_empty": true,
+        "acceptance": "只返回华尔街见闻来源新闻，数量不超过2条"
+      }
+    },
+    {
+      "id": "T07",
+      "intent": "语言切换",
+      "scenario": "AI英文输出",
+      "inputs": {
+        "keyword": "AI",
+        "raw_query": "用英文给我AI新闻，3条"
+      },
+      "expect": {
+        "hard_checks": ["non_empty", "format", "language", "limit_max"],
+        "language": "en",
+        "max_count": 3,
+        "acceptance": "英文输出，数量不超过3条"
+      }
+    },
+    {
+      "id": "T08",
+      "intent": "基础查询",
+      "scenario": "财经默认查询",
+      "inputs": {
+        "keyword": "财经",
+        "raw_query": "给我今天的财经新闻"
+      },
+      "expect": {
+        "hard_checks": ["non_empty", "format", "structure", "timeliness"],
+        "acceptance": "返回24小时内财经相关新闻，格式正确"
+      },
+      "manual_review": true
+    },
+    {
+      "id": "T09",
+      "intent": "条数限制",
+      "scenario": "财经指定5条",
+      "inputs": {
+        "keyword": "财经",
+        "raw_query": "来5条财经新闻"
+      },
+      "expect": {
+        "hard_checks": ["non_empty", "format", "structure", "limit_max"],
+        "max_count": 5,
+        "acceptance": "返回不超过5条财经新闻"
+      }
+    },
+    {
+      "id": "T10",
+      "intent": "来源过滤",
+      "scenario": "财经来源华尔街见闻",
+      "inputs": {
+        "keyword": "财经",
+        "raw_query": "华尔街见闻的财经新闻"
+      },
+      "expect": {
+        "hard_checks": ["format", "source_only"],
+        "expected_source": "华尔街见闻",
+        "allow_empty": true,
+        "acceptance": "只返回华尔街见闻来源财经新闻"
+      }
+    },
+    {
+      "id": "T11",
+      "intent": "语言切换",
+      "scenario": "财经英文输出",
+      "inputs": {
+        "keyword": "财经",
+        "raw_query": "Give me finance news in English"
+      },
+      "expect": {
+        "hard_checks": ["format", "language"],
+        "language": "en",
+        "allow_empty": true,
+        "acceptance": "英文输出财经新闻"
+      }
+    },
+    {
+      "id": "T12",
+      "intent": "基础查询",
+      "scenario": "科技默认查询",
+      "inputs": {
+        "keyword": "科技",
+        "raw_query": "给我科技新闻"
+      },
+      "expect": {
+        "hard_checks": ["non_empty", "format", "structure"],
+        "acceptance": "返回科技相关新闻，格式正确"
+      },
+      "manual_review": true
+    },
+    {
+      "id": "T13",
+      "intent": "来源过滤",
+      "scenario": "科技精确来源-IT之家",
+      "inputs": {
+        "keyword": "科技",
+        "raw_query": "IT之家的科技新闻，3条"
+      },
+      "expect": {
+        "hard_checks": ["format", "source_only", "limit_max"],
+        "expected_source": "IT之家",
+        "max_count": 3,
+        "allow_empty": true,
+        "acceptance": "只返回IT之家来源科技新闻，数量不超过3条"
+      }
+    },
+    {
+      "id": "T14",
+      "intent": "来源过滤",
+      "scenario": "科技别名来源-ithome",
+      "inputs": {
+        "keyword": "科技",
+        "raw_query": "ithome有什么科技新闻"
+      },
+      "expect": {
+        "hard_checks": ["format", "source_only"],
+        "expected_source": "IT之家",
+        "allow_empty": true,
+        "acceptance": "只返回IT之家来源科技新闻"
+      }
+    },
+    {
+      "id": "T15",
+      "intent": "边界情况",
+      "scenario": "不存在的来源",
+      "inputs": {
+        "keyword": "AI",
+        "raw_query": "纽约时报的AI新闻"
+      },
+      "expect": {
+        "hard_checks": ["empty_ok"],
+        "allow_empty": true,
+        "acceptance": "无匹配时输出友好空状态"
+      }
+    },
+    {
+      "id": "T16",
+      "intent": "复杂查询",
+      "scenario": "长查询多关键词",
+      "inputs": {
+        "keyword": "大模型",
+        "raw_query": "关于大模型、深度学习、AI的深度报道，5条"
+      },
+      "expect": {
+        "hard_checks": ["non_empty", "format", "structure", "limit_max"],
+        "max_count": 5,
+        "acceptance": "返回相关深度报道，数量不超过5条"
+      },
+      "manual_review": true
+    },
+    {
+      "id": "T17",
+      "intent": "复杂查询",
+      "scenario": "复合关键词",
+      "inputs": {
+        "keyword": "英伟达",
+        "raw_query": "英伟达的最新新闻"
+      },
+      "expect": {
+        "hard_checks": ["format", "structure"],
+        "allow_empty": true,
+        "acceptance": "返回英伟达相关新闻，格式正确"
+      },
+      "manual_review": true
+    },
+    {
+      "id": "T18",
+      "intent": "复杂查询",
+      "scenario": "特定话题",
+      "inputs": {
+        "keyword": "股市",
+        "raw_query": "今天股市有什么大新闻"
+      },
+      "expect": {
+        "hard_checks": ["format"],
+        "allow_empty": true,
+        "acceptance": "返回股市相关新闻，格式正确"
+      },
+      "manual_review": true
+    },
+    {
+      "id": "T19",
+      "intent": "来源过滤",
+      "scenario": "多来源组合-虎嗅+华尔街见闻",
+      "inputs": {
+        "keyword": "AI",
+        "raw_query": "虎嗅和华尔街见闻的AI新闻，各2条"
+      },
+      "expect": {
+        "hard_checks": ["non_empty", "format", "limit_max"],
+        "max_count": 4,
+        "allow_empty": true,
+        "acceptance": "返回虎嗅和华尔街见闻的AI新闻，总数不超过4条"
+      }
+    },
+    {
+      "id": "T20",
+      "intent": "边界情况",
+      "scenario": "超大条数请求",
+      "inputs": {
+        "keyword": "AI",
+        "raw_query": "给我100条AI新闻"
+      },
+      "expect": {
+        "hard_checks": ["non_empty", "format", "structure", "limit_max"],
+        "max_count": 10,
+        "acceptance": "最多返回10条，不应返回超过上限的条数"
+      }
+    }
+  ]
+}

@@ -1,0 +1,301 @@
+schema_version: 1.0.0
+name: supabase_auto_send_only_mail
+id: 7602211519330091042
+description: "supabase只用来发送邮件"
+mode: workflow
+icon: plugin_icon/workflow.png
+nodes:
+    - id: "1554646"
+      type: plugin
+      title: sendMail_1
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Plugin-v2.jpg
+      description: "发送邮件"
+      position:
+        x: 2020
+        y: 12.000000000000007
+      parameters:
+        apiParam:
+            - name: apiID
+              input:
+                type: string
+                value: "7385456907873517618"
+            - name: apiName
+              input:
+                type: string
+                value: "sendMail"
+            - name: pluginID
+              input:
+                type: string
+                value: "7385456907873501234"
+            - name: pluginName
+              input:
+                type: string
+                value: "邮件管理"
+            - name: pluginVersion
+              input:
+                type: string
+                value: ""
+            - name: tips
+              input:
+                type: string
+                value: ""
+            - name: outDocLink
+              input:
+                type: string
+                value: ""
+        node_inputs:
+            - name: account
+              input:
+                type: string
+                value: "demo@example.com"
+            - name: password
+              input:
+                type: string
+                value: "fmyvepozxmpnbfid"
+            - name: subject
+              input:
+                type: string
+                value: "24小时热点资讯推送"
+            - name: text
+              input:
+                type: string
+                value:
+                    path: content
+                    ref_node: "108493"
+            - name: to
+              input:
+                type: string
+                value:
+                    path: email
+                    ref_node: "100001"
+            - name: html
+              input:
+                type: string
+                value:
+                    path: content
+                    ref_node: "108493"
+        node_outputs:
+            message:
+                type: string
+                required: true
+                value: null
+                description: 执行的结果
+            success:
+                type: boolean
+                required: true
+                value: null
+                description: 是否发送成功
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            timeoutMs: 180000
+    - id: "100001"
+      type: start
+      title: 开始
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Start-v2.jpg
+      description: "工作流的起始节点，用于设定启动工作流需要的信息"
+      position:
+        x: 180
+        y: 25.000000000000007
+      parameters:
+        node_outputs:
+            email:
+                type: string
+                required: true
+                value: null
+            keyword:
+                type: string
+                required: true
+                value: null
+    - id: "900001"
+      type: end
+      title: 结束
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-End-v2.jpg
+      description: "工作流的最终节点，用于返回工作流运行后的结果信息"
+      position:
+        x: 2480
+        y: 12.000000000000007
+      parameters:
+        node_inputs:
+            - name: output
+              input:
+                value:
+                    path: success
+                    ref_node: "1554646"
+        terminatePlan: returnVariables
+    - id: "108493"
+      type: code
+      title: 更新时间
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Code-v2.jpg
+      description: "编写代码，处理输入变量来生成返回值"
+      version: v2
+      position:
+        x: 1560
+        y: 12.000000000000007
+      parameters:
+        code: "import json\nimport re\nfrom datetime import datetime, timedelta\n\nasync def main(args):\n    # ================= 1. 获取并解析数据 =================\n    # 获取 HTTP 节点输出的 body 字符串\n    raw_body = args.params.get('input') \n    \n    # 初始化 html_content\n    html_content = \"\"\n    \n    try:\n        # 如果 input 本身就是 dict/list (Coze有时会自动转)，直接用\n        if isinstance(raw_body, (dict, list)):\n            data = raw_body\n        else:\n            # 否则尝试将字符串解析为 JSON\n            data = json.loads(raw_body)\n            \n        # 兼容两种返回结构：\n        # 情况A (Table API/RPC返回列表): [{\"content\": \"...\"}]\n        if isinstance(data, list) and len(data) > 0:\n            html_content = data[0].get('content', '')\n        # 情况B (RPC返回字典): {\"content\": \"...\"}\n        elif isinstance(data, dict):\n            html_content = data.get('content', '')\n            \n    except Exception as e:\n        print(f\"JSON 解析失败: {e}\")\n        return {\"content\": \"<h1>数据读取失败</h1>\"}\n\n    if not html_content:\n        return {\"content\": \"<h1>今日暂无归档内容</h1>\"}\n\n    # ================= 2. 更新时间与问候语 (保持你原有的优秀逻辑) =================\n    utc_now = datetime.utcnow()\n    beijing_now = utc_now + timedelta(hours=8)\n    weekdays = [\"星期一\", \"星期二\", \"星期三\", \"星期四\", \"星期五\", \"星期六\", \"星期日\"]\n    weekday_str = weekdays[beijing_now.weekday()]\n    \n    # 目标时间字符串\n    new_date_str = beijing_now.strftime(\"%Y年%m月%d日 %H:%M\") + \" \" + weekday_str\n\n    # 正则替换：更新 header-date\n    pattern = r'(<p class=\"header-date\">\\s*<span>)(.*?)(</span>)'\n    new_html, count = re.subn(pattern, fr'\\g<1>{new_date_str}\\g<3>', html_content, flags=re.DOTALL | re.IGNORECASE)\n\n    # 正则替换：更新问候语\n    try:\n        h = beijing_now.hour\n        current_greeting = \"早上好\" if 5<=h<11 else \"中午好\" if 11<=h<13 else \"下午好\" if 13<=h<18 else \"晚上好\"\n        # 匹配 <h1>任意问候语，\n        greeting_pattern = r'(<h1>)(.*?)(，这是为您精选)'\n        new_html = re.sub(greeting_pattern, fr'\\g<1>{current_greeting}\\g<3>', new_html, count=1)\n    except:\n        pass\n\n    # ================= 3. 返回结果 =================\n    return {\n        \"content\": new_html\n    }\n"
+        language: 3
+        node_inputs:
+            - name: input
+              input:
+                type: string
+                value:
+                    path: body
+                    ref_node: "1581884"
+        node_outputs:
+            content:
+                type: string
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            switch: false
+            timeoutMs: 60000
+    - id: "1581884"
+      type: http
+      title: 读取缓存
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-HTTP.png
+      description: "用于发送API请求，从接口返回数据"
+      position:
+        x: 1100
+        y: 0
+      parameters:
+        apiInfo:
+            method: GET
+            url: https://ebvstftlpvvyzdzjshqa.supabase.co/rest/v1/daily_news_history
+        auth:
+            authData:
+                customData:
+                    addTo: header
+            authOpen: false
+            authType: BEARER_AUTH
+        body:
+            bodyData:
+                binary:
+                    fileURL:
+                        type: string
+                        value:
+                            content:
+                                blockID: ""
+                                name: ""
+                                source: block-output
+                            rawMeta:
+                                type: 1
+                            type: ref
+                rawText: ""
+            bodyType: RAW_TEXT
+        headers:
+            - name: apikey
+              input:
+                type: string
+                value: "<REDACTED>"
+            - name: Authorization
+              input:
+                type: string
+                value: "Bearer <REDACTED>"
+        node_outputs:
+            body:
+                type: string
+                value: null
+            headers:
+                type: string
+                value: null
+            statusCode:
+                type: integer
+                value: null
+        params:
+            - name: keyword
+              input:
+                type: string
+                value:
+                    path: output
+                    ref_node: "150642"
+            - name: order
+              input:
+                type: string
+                value: "created_at.desc"
+            - name: limit
+              input:
+                type: string
+                value: "1"
+            - name: select
+              input:
+                type: string
+                value: "content"
+        setting:
+            retryTimes: 0
+            timeout: 30
+        settingOnError:
+            dataOnErr: |-
+                {
+                    "body": "",
+                    "statusCode": 0,
+                    "headers": ""
+                }
+            switch: false
+    - id: "150642"
+      type: text
+      title: eq.keyword
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-StrConcat-v2.jpg
+      description: "用于处理多个字符串类型变量的格式"
+      position:
+        x: 640
+        y: 12.000000000000007
+      parameters:
+        concatParams:
+            - name: concatResult
+              input:
+                type: string
+                value: "eq.{{String1}}"
+            - name: arrayItemConcatChar
+              input:
+                type: string
+                value: "，"
+            - name: allArrayItemConcatChars
+              input:
+                type: list
+                items:
+                    type: object
+                    value: null
+                value:
+                    - isDefault: true
+                      label: "换行"
+                      value: "\n"
+                    - isDefault: true
+                      label: "制表符"
+                      value: "\t"
+                    - isDefault: true
+                      label: "句号"
+                      value: "。"
+                    - isDefault: true
+                      label: "逗号"
+                      value: "，"
+                    - isDefault: true
+                      label: "分号"
+                      value: "；"
+                    - isDefault: true
+                      label: "空格"
+                      value: " "
+        method: concat
+        node_inputs:
+            - name: String1
+              input:
+                value:
+                    path: keyword
+                    ref_node: "100001"
+        node_outputs:
+            output:
+                type: string
+                required: true
+                value: null
+edges:
+    - source_node: "108493"
+      target_node: "1554646"
+    - source_node: "1554646"
+      target_node: "900001"
+    - source_node: "100001"
+      target_node: "150642"
+    - source_node: "1581884"
+      target_node: "108493"
+    - source_node: "150642"
+      target_node: "1581884"

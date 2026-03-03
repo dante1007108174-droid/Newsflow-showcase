@@ -1,0 +1,342 @@
+{
+  "name": "订阅推送（supabase）",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "subscriptions",
+        "returnAll": true,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "send_time",
+              "condition": "eq",
+              "keyValue": "={{ $json.formattedDate }}"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "active"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        272,
+        160
+      ],
+      "id": "76fe8a9c-96dc-45be-baba-9a74a931dc5b",
+      "name": "Search records",
+      "credentials": {
+        "supabaseApi": {
+          "id": "r4vv2Nl0LZexKAVU",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "formatDate",
+        "date": "={{ $now.plus({minutes: 5}) }}",
+        "format": "custom",
+        "customFormat": "HH",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        48,
+        160
+      ],
+      "id": "091b9567-f910-473a-be57-aa92673bdf8b",
+      "name": "Date & Time"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.coze.cn/v1/workflow/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer <REDACTED>"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"workflow_id\": \"7602200039352975370\",\n  \"is_async\": true,\n  \"parameters\": {\n    \"keyword\": \"{{$json.keyword}}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        720,
+        160
+      ],
+      "id": "5e5ef4fd-d394-4ed7-bcec-36d7d1c50b57",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "keyword",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        496,
+        160
+      ],
+      "id": "57fdca0c-6d16-48e7-b616-0b8fa3bfe110",
+      "name": "Remove Duplicates1"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "subscriptions",
+        "returnAll": true,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "send_time",
+              "condition": "eq",
+              "keyValue": "={{ $json.Hour }}"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "active"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        48,
+        336
+      ],
+      "id": "3c375fe5-65f1-4b9e-ae1e-e932beede20e",
+      "name": "Search records2",
+      "credentials": {
+        "supabaseApi": {
+          "id": "r4vv2Nl0LZexKAVU",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.coze.cn/v1/workflow/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer <REDACTED>"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"workflow_id\": \"7602211519330091042\",\n  \"is_async\": true,\n  \"parameters\": {\n    \"keyword\": \"{{ $json.keyword}}\",\n    \"email\": \"{{$json.email}}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        272,
+        336
+      ],
+      "id": "a5875d3f-c8fa-4bb3-879f-39b544951de1",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "55 7 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -144,
+        160
+      ],
+      "id": "c91c804a-b2f4-472b-8e88-f36a00ec6ef6",
+      "name": "7点55生成邮件"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "1 8 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -160,
+        336
+      ],
+      "id": "9d1da043-2864-4f78-a789-0548b1a0f013",
+      "name": "8点发送邮件"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "55 17 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -176,
+        0
+      ],
+      "id": "95954d10-5695-41de-b627-2e764d63f4c1",
+      "name": "测试时间生成邮件"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 18 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -144,
+        528
+      ],
+      "id": "6a661545-4b37-4ed9-9c33-473998de4fc0",
+      "name": "测试时间发送邮件"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Search records": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicates1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time": {
+      "main": [
+        [
+          {
+            "node": "Search records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicates1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "测试时间生成邮件": {
+      "main": [
+        []
+      ]
+    },
+    "测试时间发送邮件": {
+      "main": [
+        []
+      ]
+    },
+    "8点发送邮件": {
+      "main": [
+        [
+          {
+            "node": "Search records2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7点55生成邮件": {
+      "main": [
+        [
+          {
+            "node": "Date & Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "0d8a01aa-09e9-4f86-85ab-be7946f6ce7e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9448e1495fb1c8886e1bec17fb3de57f50a58b0d5b3cba9a8007dbbb1f4a6df6"
+  },
+  "id": "kFRjWR6LbnbyJ5NB",
+  "tags": []
+}

@@ -1,0 +1,11 @@
+type: Workflow
+version: 1.0.0
+main:
+    id: 7600715912702902281
+    name: get_instant_news_using
+    desc: 直接获取新闻（仅提示词排序加强，保留流式）
+    icon: plugin_icon/workflow.png
+    version: ""
+    flowMode: 0
+    commitId: ""
+sub: []

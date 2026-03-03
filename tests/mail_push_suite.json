@@ -1,0 +1,90 @@
+{
+  "suite": {
+    "name": "mail_push_generation",
+    "version": "v1-2026-02-08",
+    "workflow_id": "7604459455123619894",
+    "pass_threshold": 70,
+    "notes": [
+      "This suite calls Coze workflow API directly.",
+      "Workflow output should be pure JSON: {top_news, quick_news}.",
+      "Scoring is mostly deterministic; sorting-by-news-value is manually judged post-run.",
+      "Each topic is run 3 times to measure stability (3/3)."
+    ]
+  },
+  "cases": [
+    {
+      "id": "MP-AI-01",
+      "intent": "邮件推送",
+      "scenario": "AI主题 - 第1轮",
+      "topic": "ai",
+      "inputs": { "keyword": "ai" },
+      "manual_review": true
+    },
+    {
+      "id": "MP-AI-02",
+      "intent": "邮件推送",
+      "scenario": "AI主题 - 第2轮",
+      "topic": "ai",
+      "inputs": { "keyword": "ai" },
+      "manual_review": true
+    },
+    {
+      "id": "MP-AI-03",
+      "intent": "邮件推送",
+      "scenario": "AI主题 - 第3轮",
+      "topic": "ai",
+      "inputs": { "keyword": "ai" },
+      "manual_review": true
+    },
+
+    {
+      "id": "MP-TECH-01",
+      "intent": "邮件推送",
+      "scenario": "科技主题 - 第1轮",
+      "topic": "tech",
+      "inputs": { "keyword": "科技" },
+      "manual_review": true
+    },
+    {
+      "id": "MP-TECH-02",
+      "intent": "邮件推送",
+      "scenario": "科技主题 - 第2轮",
+      "topic": "tech",
+      "inputs": { "keyword": "科技" },
+      "manual_review": true
+    },
+    {
+      "id": "MP-TECH-03",
+      "intent": "邮件推送",
+      "scenario": "科技主题 - 第3轮",
+      "topic": "tech",
+      "inputs": { "keyword": "科技" },
+      "manual_review": true
+    },
+
+    {
+      "id": "MP-FIN-01",
+      "intent": "邮件推送",
+      "scenario": "财经主题 - 第1轮",
+      "topic": "finance",
+      "inputs": { "keyword": "财经" },
+      "manual_review": true
+    },
+    {
+      "id": "MP-FIN-02",
+      "intent": "邮件推送",
+      "scenario": "财经主题 - 第2轮",
+      "topic": "finance",
+      "inputs": { "keyword": "财经" },
+      "manual_review": true
+    },
+    {
+      "id": "MP-FIN-03",
+      "intent": "邮件推送",
+      "scenario": "财经主题 - 第3轮",
+      "topic": "finance",
+      "inputs": { "keyword": "财经" },
+      "manual_review": true
+    }
+  ]
+}

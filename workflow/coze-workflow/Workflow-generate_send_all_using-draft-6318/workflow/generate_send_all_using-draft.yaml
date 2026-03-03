@@ -1,0 +1,1258 @@
+schema_version: 1.0.0
+name: generate_send_all_using
+id: 7600837645149044755
+description: "生成并所有主题新闻（现役）"
+mode: workflow
+icon: plugin_icon/workflow.png
+nodes:
+    - id: "149495"
+      type: plugin
+      title: sendMail
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Plugin-v2.jpg
+      description: "发送邮件"
+      position:
+        x: 4320
+        y: 289.30000000000007
+      parameters:
+        apiParam:
+            - name: apiID
+              input:
+                type: string
+                value: "7385456907873517618"
+            - name: apiName
+              input:
+                type: string
+                value: "sendMail"
+            - name: pluginID
+              input:
+                type: string
+                value: "7385456907873501234"
+            - name: pluginName
+              input:
+                type: string
+                value: "邮件管理"
+            - name: pluginVersion
+              input:
+                type: string
+                value: ""
+            - name: tips
+              input:
+                type: string
+                value: ""
+            - name: outDocLink
+              input:
+                type: string
+                value: ""
+        node_inputs:
+            - name: account
+              input:
+                type: string
+                value: "demo@example.com"
+            - name: password
+              input:
+                type: string
+                value: "fmyvepozxmpnbfid"
+            - name: subject
+              input:
+                type: string
+                value:
+                    path: output
+                    ref_node: "125188"
+            - name: text
+              input:
+                type: string
+                value:
+                    path: final_html
+                    ref_node: "1840736"
+            - name: to
+              input:
+                type: string
+                value:
+                    path: mail
+                    ref_node: "100001"
+            - name: html
+              input:
+                type: string
+                value:
+                    path: final_html
+                    ref_node: "1840736"
+        node_outputs:
+            message:
+                type: string
+                required: true
+                value: null
+                description: 执行的结果
+            success:
+                type: boolean
+                required: true
+                value: null
+                description: 是否发送成功
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            timeoutMs: 180000
+    - id: "100001"
+      type: start
+      title: 开始
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Start-v2.jpg
+      description: "工作流的起始节点，用于设定启动工作流需要的信息"
+      position:
+        x: 180
+        y: 306.65
+      parameters:
+        node_outputs:
+            keyword:
+                type: string
+                required: true
+                value: null
+            mail:
+                type: string
+                required: true
+                value: null
+    - id: "900001"
+      type: end
+      title: 结束
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-End-v2.jpg
+      description: "工作流的最终节点，用于返回工作流运行后的结果信息"
+      position:
+        x: 4780
+        y: 289.30000000000007
+      parameters:
+        content:
+            type: string
+            value:
+                content: 邮件已发送成功，请及时查收。
+                type: literal
+        streamingOutput: true
+        terminatePlan: useAnswerContent
+    - id: "1840736"
+      type: code
+      title: html处理_1
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Code-v2.jpg
+      description: "编写代码，处理输入变量来生成返回值"
+      version: v2
+      position:
+        x: 2940
+        y: 289.30000000000007
+      parameters:
+        code: "import json\nimport datetime\nimport re\n\ndef smart_truncate_summary(text, max_length=120):\n    \"\"\"智能截断：在句子结束符处截断，不用省略号\"\"\"\n    if not text or len(text) <= max_length:\n        return text\n    \n    search_start = max_length\n    search_end = min(len(text), max_length + 60)\n    search_text = text[search_start:search_end]\n    \n    match = re.search(r'[。！？!?]', search_text)\n    if match:\n        return text[:search_start + match.end()]\n    \n    match = re.search(r'[；;：:]', search_text)\n    if match:\n        return text[:search_start + match.end()]\n    \n    match = re.search(r'[，,、]', search_text)\n    if match:\n        return text[:search_start + match.end()]\n    \n    return text[:search_end]\n\ndef parse_llm_result(raw_data):\n    \"\"\"解析 LLM 输出，兼容字符串和字典\"\"\"\n    if not raw_data:\n        return None\n    \n    data = None\n    \n    if isinstance(raw_data, dict):\n        # 检查是否直接包含 top_news/quick_news\n        if 'top_news' in raw_data or 'quick_news' in raw_data:\n            data = raw_data\n        # 可能是 {\"output\": \"...\"} 格式\n        elif 'output' in raw_data:\n            inner = raw_data['output']\n            if isinstance(inner, dict):\n                data = inner\n            elif isinstance(inner, str):\n                clean_json = inner.replace(\"```json\", \"\").replace(\"```\", \"\").strip()\n                if clean_json:\n                    try:\n                        data = json.loads(clean_json)\n                    except:\n                        pass\n    elif isinstance(raw_data, str):\n        clean_json = raw_data.replace(\"```json\", \"\").replace(\"```\", \"\").strip()\n        if clean_json:\n            try:\n                data = json.loads(clean_json)\n            except:\n                pass\n    \n    # 验证解析结果有效\n    if data and (data.get('top_news') or data.get('quick_news')):\n        return data\n    \n    return None\n\nasync def main(args):\n    # ============================================================\n    # \U0001F527 获取 3 个 LLM 结果（根据路由，只有一个会有数据）\n    # ============================================================\n    llm_result_ai = args.params.get('llm_result_ai')\n    llm_result_tech = args.params.get('llm_result_tech')\n    llm_result_finance = args.params.get('llm_result_finance')\n    raw_keyword = args.params.get('keyword', '热点')\n    keyword_upper = str(raw_keyword).upper()\n    \n    # ============================================================\n    # \U0001F527 智能选择有效的 LLM 结果\n    # ============================================================\n    data = None\n    \n    candidates = [\n        llm_result_ai,\n        llm_result_tech,\n        llm_result_finance\n    ]\n    \n    for raw_data in candidates:\n        parsed = parse_llm_result(raw_data)\n        if parsed:\n            data = parsed\n            break\n    \n    # 如果都解析失败\n    if not data:\n        debug_info = []\n        debug_info.append(f\"llm_result_ai: {str(llm_result_ai)[:100] if llm_result_ai else 'None'}\")\n        debug_info.append(f\"llm_result_tech: {str(llm_result_tech)[:100] if llm_result_tech else 'None'}\")\n        debug_info.append(f\"llm_result_finance: {str(llm_result_finance)[:100] if llm_result_finance else 'None'}\")\n        \n        error_msg = f\"\"\"\n        <div style=\"color:red; padding:20px; background:#fff0f0; border:1px solid red;\">\n            <h3>JSON 解析失败</h3>\n            <p>错误: 所有 LLM 结果都为空或无法解析</p>\n            <pre>{chr(10).join(debug_info)}</pre>\n        </div>\n        \"\"\"\n        return {\"final_html\": error_msg}\n\n    # ============================================================\n    # 时间和问候语\n    # ============================================================\n    utc_now = datetime.datetime.utcnow()\n    beijing_now = utc_now + datetime.timedelta(hours=8)\n    weekdays = [\"星期一\", \"星期二\", \"星期三\", \"星期四\", \"星期五\", \"星期六\", \"星期日\"]\n    date_header_str = beijing_now.strftime(\"%Y年%m月%d日 %H:%M\") + \" \" + weekdays[beijing_now.weekday()]\n\n    h = beijing_now.hour\n    greeting = \"早上好\" if 5<=h<11 else \"中午好\" if 11<=h<13 else \"下午好\" if 13<=h<18 else \"晚上好\"\n\n    # ============================================================\n    # CSS\n    # ============================================================\n    css = \"\"\"\n    <style>\n      body { font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; background-color: #f6f6f6; padding: 20px; color: #333; margin: 0; }\n      .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }\n      a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; pointer-events: none !important; }\n      .header { background: linear-gradient(135deg, #0066FF 0%, #0052cc 100%); color: white; padding: 35px 20px; text-align: center; }\n      .header h1 { margin: 0 0 10px 0; font-size: 22px; font-weight: 600; line-height: 1.4; }\n      .header-date { margin: 0; font-size: 13px; opacity: 0.95; color: #ffffff !important; }\n      .section-title { padding: 20px 20px 10px 20px; font-size: 18px; font-weight: bold; color: #111; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; }\n      .section-title span { margin-right: 6px; }\n      .card { padding: 20px; border-bottom: 1px solid #f0f0f0; }\n      .tag { display: inline-block; background: #eef4ff; color: #0066FF; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-bottom: 8px; }\n      .card-title { font-size: 19px; font-weight: bold; color: #1a1a1a; margin: 0 0 8px 0; line-height: 1.4; }\n      .meta-line { color: #999; font-size: 13px; margin-bottom: 12px; }\n      .summary { color: #666; font-size: 15px; line-height: 1.6; text-align: justify; margin-bottom: 15px; }\n      a.read-more { color: #0066FF !important; text-decoration: none !important; font-weight: 600; font-size: 14px; }\n      .list-item { padding: 15px 20px; border-bottom: 1px solid #f5f5f5; }\n      .list-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: #333; line-height: 1.4; }\n      .list-meta { font-size: 12px; color: #999; }\n      a.source-link { color: #0066FF !important; text-decoration: underline !important; }\n      .empty-state { padding: 60px 20px; text-align: center; color: #999; }\n      .footer { background: #fafafa; padding: 25px 20px; text-align: center; color: #999; font-size: 12px; border-top: 1px solid #eee; }\n    </style>\n    \"\"\"\n\n    # ============================================================\n    # HTML 生成\n    # ============================================================\n    html_content = f\"\"\"\n    <!DOCTYPE html>\n    <html>\n    <head>\n    <meta charset=\"utf-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <meta name=\"format-detection\" content=\"telephone=no, date=no, address=no, email=no, url=no\">\n    {css}\n    </head>\n    <body>\n    <div class=\"container\">\n      <div class=\"header\">\n        <h1>{greeting}，这是为您精选的<br>24小时\"{keyword_upper}\"资讯</h1>\n        <p class=\"header-date\"><span>{date_header_str}</span></p>\n      </div>\n    \"\"\"\n\n    top_news_list = data.get('top_news', []) or []\n    quick_news_list = data.get('quick_news', []) or []\n\n    if len(top_news_list) == 0 and len(quick_news_list) == 0:\n        html_content += \"\"\"\n        <div class=\"empty-state\">\n            <span style=\"font-size:48px;\">\U0001F4ED</span>\n            <div style=\"font-size:16px; color:#666; margin-top:15px;\">暂时没有检索到相关新闻</div>\n        </div>\n        \"\"\"\n    else:\n        if len(top_news_list) > 0:\n            html_content += '<div class=\"section-title\"><span>\U0001F525</span> 核心热点</div>'\n            for news in top_news_list:\n                source_display = news.get('source', '来源')\n                \n                raw_time = str(news.get('time', ''))\n                if len(raw_time) > 10 and '-' in raw_time:\n                    display_time = raw_time[5:]\n                else:\n                    display_time = raw_time\n\n                main_link = news.get('link', '#')\n                tag = news.get('tag', '热点')\n                \n                raw_summary = news.get('summary', '')\n                summary = smart_truncate_summary(raw_summary, max_length=120)\n\n                html_content += f\"\"\"\n                <div class=\"card\">\n                  <span class=\"tag\">{tag}</span>\n                  <div class=\"card-title\">{news.get('title')}</div>\n                  <div class=\"meta-line\">来源：{source_display} | {display_time}</div>\n                  <div class=\"summary\">{summary}</div>\n                  <a href=\"{main_link}\" class=\"read-more\">阅读原文 →</a>\n                </div>\n                \"\"\"\n\n        if len(quick_news_list) > 0:\n            html_content += '<div class=\"section-title\"><span>\U0001F4F0</span> 新闻速览</div>'\n            for news in quick_news_list:\n                source_display = news.get('source', '资讯')\n                main_link = news.get('link', '#')\n                raw_time = str(news.get('time', ''))\n                display_time = raw_time[5:] if len(raw_time) > 10 else raw_time\n\n                html_content += f\"\"\"\n                <div class=\"list-item\">\n                  <div class=\"list-title\">{news.get('title')}</div>\n                  <div class=\"list-meta\">来源：<a href=\"{main_link}\" class=\"source-link\">{source_display}</a> | {display_time}</div>\n                </div>\n                \"\"\"\n\n    html_content += \"\"\"\n      <div class=\"footer\">把握行业脉搏，洞察科技未来 | 明日继续为您提供精选情报</div>\n    </div>\n    </body>\n    </html>\n    \"\"\"\n    \n    return {\"final_html\": html_content}\n"
+        language: 3
+        node_inputs:
+            - name: llm_result_ai
+              input:
+                type: string
+                value:
+                    path: output
+                    ref_node: "1759387"
+            - name: keyword
+              input:
+                value:
+                    path: keyword
+                    ref_node: "100001"
+            - name: llm_result_tech
+              input:
+                type: string
+                value:
+                    path: output
+                    ref_node: "1701686"
+            - name: llm_result_finance
+              input:
+                type: string
+                value:
+                    path: output
+                    ref_node: "1584268"
+        node_outputs:
+            final_html:
+                type: string
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            switch: false
+            timeoutMs: 60000
+    - id: "125188"
+      type: text
+      title: 文本处理
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-StrConcat-v2.jpg
+      description: "用于处理多个字符串类型变量的格式"
+      position:
+        x: 3860
+        y: 289.30000000000007
+      parameters:
+        concatParams:
+            - name: concatResult
+              input:
+                type: string
+                value: "24小时{{String1}}资讯推送"
+            - name: arrayItemConcatChar
+              input:
+                type: string
+                value: "，"
+            - name: allArrayItemConcatChars
+              input:
+                type: list
+                items:
+                    type: object
+                    value: null
+                value:
+                    - isDefault: true
+                      label: "换行"
+                      value: "\n"
+                    - isDefault: true
+                      label: "制表符"
+                      value: "\t"
+                    - isDefault: true
+                      label: "句号"
+                      value: "。"
+                    - isDefault: true
+                      label: "逗号"
+                      value: "，"
+                    - isDefault: true
+                      label: "分号"
+                      value: "；"
+                    - isDefault: true
+                      label: "空格"
+                      value: " "
+        method: concat
+        node_inputs:
+            - name: String1
+              input:
+                type: string
+                value:
+                    path: keyword_upper
+                    ref_node: "118321"
+        node_outputs:
+            output:
+                type: string
+                required: true
+                value: null
+    - id: "118321"
+      type: code
+      title: 改大写
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Code-v2.jpg
+      description: "编写代码，处理输入变量来生成返回值"
+      version: v2
+      position:
+        x: 3400
+        y: 289.30000000000007
+      parameters:
+        code: "async def main(args):\n    # 获取原始关键词\n    raw_keyword = args.params.get('keyword', '热点')\n    \n    # 转换为大写\n    keyword_upper = str(raw_keyword).upper()\n    \n    return {\n        \"keyword_upper\": keyword_upper\n    }\n"
+        language: 3
+        node_inputs:
+            - name: keyword
+              input:
+                value:
+                    path: keyword
+                    ref_node: "100001"
+        node_outputs:
+            keyword_upper:
+                type: string
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            switch: false
+            timeoutMs: 60000
+    - id: "1928429"
+      type: code
+      title: AI&科技-rss解析
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Code-v2.jpg
+      description: "编写代码，处理输入变量来生成返回值"
+      version: v2
+      position:
+        x: 1815.8666767257214
+        y: 872.4136750982879
+      parameters:
+        code: "async def main(args):\n    result = {\n        \"test1_requests\": \"未测试\",\n        \"test2_urlopen\": \"未测试\",\n        \"test3_fetch_baidu\": \"未测试\"\n    }\n    \n    # 测试1: requests 库是否可用\n    try:\n        import requests\n        resp = requests.get(\"https://www.baidu.com\", timeout=10)\n        result[\"test1_requests\"] = f\"成功! 状态码: {resp.status_code}\"\n    except Exception as e:\n        result[\"test1_requests\"] = f\"失败: {type(e).__name__}: {str(e)[:60]}\"\n    \n    # 测试2: urlopen 是否可用\n    try:\n        from urllib.request import urlopen, Request\n        req = Request(\"https://www.baidu.com\", headers={\"User-Agent\": \"Mozilla/5.0\"})\n        resp = urlopen(req, timeout=10)\n        result[\"test2_urlopen\"] = f\"成功! 状态码: {resp.status}\"\n    except Exception as e:\n        result[\"test2_urlopen\"] = f\"失败: {type(e).__name__}: {str(e)[:60]}\"\n    \n    # 测试3: 访问国内站点\n    try:\n        import requests\n        resp = requests.get(\"https://sspai.com/feed\", timeout=10)\n        result[\"test3_fetch_baidu\"] = f\"成功! 长度: {len(resp.text)}\"\n    except Exception as e:\n        result[\"test3_fetch_baidu\"] = f\"失败: {type(e).__name__}: {str(e)[:60]}\"\n    \n    return result\n"
+        language: 3
+        node_inputs:
+            - name: placeholder
+              input:
+                type: string
+                value:
+                    path: output
+                    ref_node: "1326525"
+        node_outputs:
+            test1_requests:
+                type: string
+                value: null
+            test2_urlopen:
+                type: string
+                value: null
+            test3_fetch_baidu:
+                type: string
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            switch: false
+            timeoutMs: 60000
+    - id: "1326525"
+      type: llm
+      title: 关键词扩写_2
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-LLM-v2.jpg
+      description: "调用大语言模型,使用变量和提示词生成回复"
+      version: "3"
+      position:
+        x: 640
+        y: 267.65
+      parameters:
+        fcParamVar:
+            knowledgeFCParam: {}
+        llmParam:
+            - name: generationDiversity
+              input:
+                type: string
+                value: default_val
+            - name: apiMode
+              input:
+                type: integer
+                value: "0"
+            - name: temperature
+              input:
+                type: float
+                value: "0.8"
+            - name: topP
+              input:
+                type: float
+                value: "1"
+            - name: frequencyPenalty
+              input:
+                type: float
+                value: "0"
+            - name: maxTokens
+              input:
+                type: integer
+                value: "16481"
+            - name: spCurrentTime
+              input:
+                type: boolean
+                value: false
+            - name: spAntiLeak
+              input:
+                type: boolean
+                value: false
+            - name: thinkingType
+              input:
+                type: string
+                value: disabled
+            - name: responseFormat
+              input:
+                type: integer
+                value: "2"
+            - name: modelName
+              input:
+                type: string
+                value: 豆包·1.6·极致速度·250828
+            - name: modelType
+              input:
+                type: integer
+                value: "1761035614"
+            - name: parameters
+              input:
+                type: object
+                properties:
+                    max_completion_tokens:
+                        type: integer
+                        value: "0"
+                value: null
+            - name: prompt
+              input:
+                type: string
+                value: '{{keyword}}'
+            - name: enableChatHistory
+              input:
+                type: boolean
+                value: false
+            - name: chatHistoryRound
+              input:
+                type: integer
+                value: "3"
+            - name: systemPrompt
+              input:
+                type: string
+                value: |
+                    # Role
+                    你是一个搜索关键词优化专家。
+
+                    # Task
+                    用户的输入可能是一个模糊的词、一个产品名或者一个行业黑话。
+                    你需要基于这个词，联想出 15个以内最相关的同义词、下位词或关联词，以便在新闻数据库中进行广撒网搜索。
+
+                    # Constraints
+                    1. 输出必须是一个纯 JSON 数组格式。
+                    2. 不要包含任何 markdown 标记（如 ```json）。
+                    3. 第一个词必须是用户原词。
+                    4. 总数控制在 15-20个。
+                    5. **改写词中"ai"和"人工智能"必须同时出现，比如"科技"改写中有"人工智能"，则必须加上"ai"**
+
+                    其余情况：
+                    # Example
+                    User Input: AI
+                    Output: ["AI", "人工智能", "大模型", "GPT", "LLM", "Sora", "神经网络", "算力", "机器人", "智能体", "Agent"]
+
+                    User Input: 大模型
+                    Output: ["大模型", "基础模型", "Foundation Model", "通用模型", "预训练模型", "LLM", "多模态模型", "Transformer", "参数规模", "涌现能力", "微调", "对齐"]
+
+                    User Input: 体育
+                    Output:["体育", "竞技", "赛事", "运动员", "比赛", "联赛", "奥运", "足球", "篮球", "健身", "训练", "体能"]
+
+                    User Input: 艺术
+                    Output:["艺术", "绘画", "音乐", "雕塑", "设计", "美术", "表演艺术", "视觉艺术", "艺术史", "审美", "创作", "文化表达"]
+            - name: stableSystemPrompt
+              input:
+                type: string
+                value: ""
+            - name: canContinue
+              input:
+                type: boolean
+                value: false
+            - name: loopPromptVersion
+              input:
+                type: string
+                value: ""
+            - name: loopPromptName
+              input:
+                type: string
+                value: ""
+            - name: loopPromptId
+              input:
+                type: string
+                value: ""
+        node_inputs:
+            - name: keyword
+              input:
+                value:
+                    path: keyword
+                    ref_node: "100001"
+        node_outputs:
+            output:
+                type: string
+                value: null
+            reasoning_content:
+                type: string
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            switch: false
+            timeoutMs: 180000
+    - id: "1759387"
+      type: llm
+      title: AI资讯处理
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-LLM-v2.jpg
+      description: "调用大语言模型,使用变量和提示词生成回复"
+      version: "3"
+      position:
+        x: 2480
+        y: 0
+      parameters:
+        fcParam:
+            llmNodeUID: ""
+            pluginFCParam: {}
+            spaceID: ""
+            workflowVersion: ""
+        fcParamVar:
+            knowledgeFCParam: {}
+        llmParam:
+            - name: generationDiversity
+              input:
+                type: string
+                value: default_val
+            - name: apiMode
+              input:
+                type: integer
+                value: "0"
+            - name: maxTokens
+              input:
+                type: integer
+                value: "32768"
+            - name: spCurrentTime
+              input:
+                type: boolean
+                value: false
+            - name: spAntiLeak
+              input:
+                type: boolean
+                value: false
+            - name: thinkingType
+              input:
+                type: string
+                value: disabled
+            - name: responseFormat
+              input:
+                type: integer
+                value: "2"
+            - name: modelName
+              input:
+                type: string
+                value: DeepSeek-V3.2
+            - name: modelType
+              input:
+                type: integer
+                value: "1764929611"
+            - name: parameters
+              input:
+                type: object
+                value: null
+            - name: prompt
+              input:
+                type: string
+                value: ""
+            - name: enableChatHistory
+              input:
+                type: boolean
+                value: false
+            - name: chatHistoryRound
+              input:
+                type: integer
+                value: "3"
+            - name: systemPrompt
+              input:
+                type: string
+                value: "# Role\n你是ai新闻编辑，负责筛选、排序和内容优化。\n\n# Input Data\n- 新闻列表：{{news_list}}\n- 当前时间：{{current_time}}\n- 用户关注主题：{{keyword}}\n\n---\n\n# 核心规则\n\n## 1. 语义去重\n判断哪些新闻是同一事件，合并后按以下优先级选择保留版本：\n1. 该信源是否有**独家信息**（独家采访、独家数据、首发爆料） → 有则优先\n2. 信源与「{{keyword}}」的**专业匹配度**（见§4.1 信源分级） → 匹配度高者优先\n3. 以上均相当时，选择**内容最丰富**的版本\n\n## 2. 相关性过滤\n删除与「{{keyword}}」不直接相关的新闻。\n\n## 3. 排序规则\n\n按**新闻价值**排序，思考：**读者最想先看到什么？**\n\n| 优先级 | 新闻类型 | 示例 |\n|--------|----------|------|\n| ⭐⭐⭐⭐⭐ | 行业格局变化/巨头对决 | 字节vs阿里AI战役 |\n| ⭐⭐⭐⭐⭐ | 重磅产品发布/开源 | OpenAI发布Prism |\n| ⭐⭐⭐⭐⭐ | 独家爆料/泄露 | Gemini 3.5泄露 |\n| ⭐⭐⭐⭐ | 头部企业重大动作 | 腾讯混元开源 |\n| ⭐⭐⭐⭐ | 话题性事件 | Clawdbot被迫改名 |\n| ⭐⭐⭐ | 实用工具更新 | Kimi Code |\n| ⭐⭐⭐ | 行业趋势/现象 | AI漫剧淘金热 |\n| ⭐⭐ | CEO/高管言论 | 奥特曼访谈 |\n| ⭐ | 未来规划 | 三星2026年AR眼镜 |\n\n**同一优先级内，按时间排序（越新越前）。**\n\n## 4. 来源显示规则\n- **只显示一个来源**\n\n### 4.1 信源选择优先级（当多家报道同一事件时）\n\n**第一原则：独家内容优先**\n若某信源有独家采访、独家数据或首发爆料，无论分级，优先采用该信源。\n\n**第二原则：专业匹配优先**\n当无独家差异时，按以下分级选择与「{{keyword}}」最匹配的信源：\n\n| 当 keyword 为 AI / 科技类时 | 信源示例 |\n|---------------------------|---------|\n| \U0001F947 一级：科技/AI 垂类媒体 | 机器之心、量子位、36氪、极客公园、The Verge、TechCrunch |\n| \U0001F948 二级：综合科技报道 | 澎湃科技、新浪科技、腾讯科技、IT之家 |\n| \U0001F949 三级：财经/泛媒体 | 华尔街见闻、财联社、第一财经、每日经济新闻 |\n\n> 同一事件被一级和三级信源同时报道，且内容无独家差异 → 选择一级信源。\n> 三级信源有独家数据或独家采访 → 仍选三级信源，但这种情况应较少出现。\n\n**第三原则：内容丰富度兜底**\n同级信源之间，选择内容最丰富的版本。\n\n### 4.2 信源多样性（最终输出前检查）\n在完成去重、筛选、排序后，检查 top_news + quick_news 的信源分布：\n- **单一信源占比不得超过 30%**（如总共 8 条，同一来源最多 2 条）\n- **超出时的处理**：保留该信源中新闻价值最高的条目，\n  其余替换为同一事件的次优信源版本\n- **唯一例外**：该条新闻确实是该信源的独家报道\n  （独家采访、独家数据、其他信源完全没有覆盖），不受此限\n- 若该新闻无其他信源版本可替换，则降级到 quick_news；\n  若已在 quick_news 中，则保留（不强制删除有价值的新闻）\n\n## 5. Tag 规则\n- 根据标题和摘要，提炼**具体领域**（2-6字）\n- 禁止使用\"AI\"、\"科技\"等宽泛词\n- 示例：AI科研、AI音乐、开源模型、AI编程、具身智能\n\n## 6. 摘要规则\n- **极简主义**：目标 **100-120 字**（LLM通常会写超，所以这里故意写低）。\n- **必须**以完整句子结尾。\n- **严格自检**：在输出前计算字数，若超过 120 字，必须删减修饰语、背景介绍，只保留核心事实。\n- 禁止编造。\n\n## 7. 数量控制\n\n| 有效新闻数 N | top_news | quick_news |\n|-------------|----------|------------|\n| N ≤ 10 | 全部 | 空数组 [] |\n| 11 ≤ N ≤ 20 | 7-8 条 | 剩余全部 |\n| N > 20 | 8 条 | 最多 10 条 |\n\n---\n\n# Output Format\n\n纯 JSON，禁止 Markdown。\n\n{\n    \"top_news\": [ \n        {\n            \"title\": \"精炼标题\",\n            \"tag\": \"具体领域标签\",\n            \"time\": \"YYYY-MM-DD HH:mm\", \n            \"summary\": \"100-120字摘要\",\n            \"source\": \"单个来源\",\n            \"link\": \"原文链接\"\n        }\n    ],\n    \"quick_news\": [\n        {\n            \"title\": \"标题\",\n            \"time\": \"YYYY-MM-DD HH:mm\",\n            \"source\": \"来源\",\n            \"link\": \"链接\"\n        }\n    ]\n}\n"
+            - name: stableSystemPrompt
+              input:
+                type: string
+                value: ""
+            - name: canContinue
+              input:
+                type: boolean
+                value: false
+            - name: loopPromptVersion
+              input:
+                type: string
+                value: ""
+            - name: loopPromptName
+              input:
+                type: string
+                value: ""
+            - name: loopPromptId
+              input:
+                type: string
+                value: ""
+        node_inputs:
+            - name: news_list
+              input:
+                type: list
+                items:
+                    type: object
+                    properties:
+                        description:
+                            type: string
+                            value: null
+                        heat_count:
+                            type: string
+                            value: null
+                        link:
+                            type: string
+                            value: null
+                        source:
+                            type: string
+                            value: null
+                        sources_display:
+                            type: string
+                            value: null
+                        time_code:
+                            type: string
+                            value: null
+                        title:
+                            type: string
+                            value: null
+                    value: null
+                value:
+                    path: result
+                    ref_node: "1433533"
+            - name: keyword
+              input:
+                value:
+                    path: keyword
+                    ref_node: "100001"
+            - name: current_time
+              input:
+                type: string
+                value:
+                    path: current_time
+                    ref_node: "1433533"
+        node_outputs:
+            output:
+                type: string
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            switch: false
+            timeoutMs: 180000
+    - id: "1701686"
+      type: llm
+      title: 科技资讯处理
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-LLM-v2.jpg
+      description: "调用大语言模型,使用变量和提示词生成回复"
+      version: "3"
+      position:
+        x: 2480
+        y: 263.30000000000007
+      parameters:
+        fcParam:
+            llmNodeUID: ""
+            pluginFCParam: {}
+            spaceID: ""
+            workflowVersion: ""
+        fcParamVar:
+            knowledgeFCParam: {}
+        llmParam:
+            - name: generationDiversity
+              input:
+                type: string
+                value: default_val
+            - name: apiMode
+              input:
+                type: integer
+                value: "0"
+            - name: maxTokens
+              input:
+                type: integer
+                value: "32768"
+            - name: spCurrentTime
+              input:
+                type: boolean
+                value: false
+            - name: spAntiLeak
+              input:
+                type: boolean
+                value: false
+            - name: thinkingType
+              input:
+                type: string
+                value: disabled
+            - name: responseFormat
+              input:
+                type: integer
+                value: "2"
+            - name: modelName
+              input:
+                type: string
+                value: DeepSeek-V3.2
+            - name: modelType
+              input:
+                type: integer
+                value: "1764929611"
+            - name: parameters
+              input:
+                type: object
+                value: null
+            - name: prompt
+              input:
+                type: string
+                value: ""
+            - name: enableChatHistory
+              input:
+                type: boolean
+                value: false
+            - name: chatHistoryRound
+              input:
+                type: integer
+                value: "3"
+            - name: systemPrompt
+              input:
+                type: string
+                value: "# Role\n你是科技新闻编辑，负责筛选、排序和内容优化。\n\n# Input Data\n- 新闻列表：{{news_list}}\n- 当前时间：{{current_time}}\n- 用户关注主题：{{keyword}}\n\n---\n\n# 核心规则\n\n## 1. 语义去重\n判断哪些新闻是同一事件，合并后按以下优先级选择保留版本：\n1. 该信源是否有**独家信息**（独家采访、独家数据、首发爆料） → 有则优先\n2. 信源与「{{keyword}}」的**专业匹配度**（见§4.1 信源分级） → 匹配度高者优先\n3. 以上均相当时，选择**内容最丰富**的版本\n\n## 2. 相关性过滤\n删除与「{{keyword}}」不直接相关的新闻。\n\n**AI 内容比例控制**：\n- 本简报已有独立的「AI」主题，科技主题需要与之差异化\n- 纯 AI 新闻（如 AI 模型发布、AI 创业融资、AI 应用爆火、AI 投资规模）占比**不超过 30%**（8 条中最多 2-3 条）\n- 优先保留的科技内容：芯片/半导体、智能手机、消费电子、操作系统、新能源车、航天航空、通信/6G、机器人硬件、生物科技\n- AI + 硬件的交叉新闻（如\"AI 芯片量产\"、\"AI 手机功能\"）算科技，不算纯 AI\n- 如果当天科技新闻不足，宁可减少条数，也不要用纯 AI 新闻凑数\n\n## 3. 排序规则\n\n按**新闻价值**排序，思考：**读者最想先看到什么？**\n\n| 优先级 | 新闻类型 | 示例 |\n|--------|----------|------|\n| ⭐⭐⭐⭐⭐ | 行业格局变化/巨头对决 | 苹果vs华为高端机对决 |\n| ⭐⭐⭐⭐⭐ | 重磅产品发布 | 苹果发布iPhone、特斯拉新车 |\n| ⭐⭐⭐⭐⭐ | 独家爆料/泄露 | 小米汽车二代曝光 |\n| ⭐⭐⭐⭐ | 头部企业重大动作 | 华为发布鸿蒙PC、腾讯混元开源 |\n| ⭐⭐⭐⭐ | 话题性事件 | 拼多多市值超阿里 |\n| ⭐⭐⭐ | 实用工具/功能更新 | 微信新增XX功能 |\n| ⭐⭐⭐ | 行业趋势/现象 | 折叠屏手机销量暴涨 |\n| ⭐⭐ | CEO/高管言论 | 雷军年度演讲 |\n| ⭐ | 未来规划 | 三星2026年AR眼镜 |\n\n**同一优先级内，按时间排序（越新越前）。**\n\n## 4. 来源显示规则\n- **只显示一个来源**\n\n### 4.1 信源选择优先级（当多家报道同一事件时）\n\n**第一原则：独家内容优先**\n若某信源有独家采访、独家数据或首发爆料，无论分级，优先采用该信源。\n\n**第二原则：专业匹配优先**\n当无独家差异时，按以下分级选择与「{{keyword}}」最匹配的信源：\n\n| 分级 | 定义 | 信源示例 |\n|------|------|---------|\n| \U0001F947 一级：科技垂类媒体 | 以科技产业报道为核心定位 | 36氪、极客公园、IT之家、快科技、The Verge、TechCrunch |\n| \U0001F948 二级：综合门户科技频道 | 大型媒体的科技子频道 | 澎湃科技、新浪科技、腾讯科技、网易科技、凤凰科技 |\n| \U0001F949 三级：财经/泛媒体 | 以财经或综合新闻为核心定位 | 华尔街见闻、财联社、第一财经、每日经济新闻、界面新闻 |\n\n> 同一事件被一级和三级信源同时报道，且内容无独家差异 → 选择一级信源。\n> 三级信源有独家数据或独家采访 → 仍选三级信源。\n\n**第三原则：内容丰富度兜底**\n同级信源之间，选择内容最丰富的版本。\n\n### 4.2 信源多样性（最终输出前检查）\n在完成去重、筛选、排序后，检查 top_news + quick_news 的信源分布：\n- **单一信源占比不得超过 30%**（如总共 8 条，同一来源最多 2 条）\n- **超出时的处理**：保留该信源中新闻价值最高的条目，\n  其余替换为同一事件的次优信源版本\n- **唯一例外**：该条新闻确实是该信源的独家报道\n  （独家采访、独家数据、其他信源完全没有覆盖），不受此限\n- 若该新闻无其他信源版本可替换，则降级到 quick_news；\n  若已在 quick_news 中，则保留（不强制删除有价值的新闻）\n  \n## 5. Tag 规则\n- 根据标题和摘要，提炼**具体领域**（2-6字）\n- 禁止使用\"AI\"、\"科技\"等宽泛词\n- 示例：智能手机、新能源车、消费电子、AI芯片、开源模型\n\n## 6. 摘要规则\n- **极简主义**：目标 **100-120 字**（LLM通常会写超，所以这里故意写低）。\n- **必须**以完整句子结尾。\n- **严格自检**：在输出前计算字数，若超过 120 字，必须删减修饰语、背景介绍，只保留核心事实。\n- 禁止编造。\n\n## 7. 数量控制\n\n| 有效新闻数 N | top_news | quick_news |\n|-------------|----------|------------|\n| N ≤ 10 | 全部 | 空数组 [] |\n| 11 ≤ N ≤ 20 | 7-8 条 | 剩余全部 |\n| N > 20 | 8 条 | 最多 10 条 |\n\n---\n\n# Output Format\n\n纯 JSON，禁止 Markdown。\n\n{\n    \"top_news\": [ \n        {\n            \"title\": \"精炼标题\",\n            \"tag\": \"具体领域标签\",\n            \"time\": \"YYYY-MM-DD HH:mm\", \n            \"summary\": \"100-120字摘要\",\n            \"source\": \"单个来源\",\n            \"link\": \"原文链接\"\n        }\n    ],\n    \"quick_news\": [\n        {\n            \"title\": \"标题\",\n            \"time\": \"YYYY-MM-DD HH:mm\",\n            \"source\": \"来源\",\n            \"link\": \"链接\"\n        }\n    ]\n}\n"
+            - name: stableSystemPrompt
+              input:
+                type: string
+                value: ""
+            - name: canContinue
+              input:
+                type: boolean
+                value: false
+            - name: loopPromptVersion
+              input:
+                type: string
+                value: ""
+            - name: loopPromptName
+              input:
+                type: string
+                value: ""
+            - name: loopPromptId
+              input:
+                type: string
+                value: ""
+        node_inputs:
+            - name: news_list
+              input:
+                type: list
+                items:
+                    type: object
+                    properties:
+                        description:
+                            type: string
+                            value: null
+                        heat_count:
+                            type: string
+                            value: null
+                        link:
+                            type: string
+                            value: null
+                        source:
+                            type: string
+                            value: null
+                        sources_display:
+                            type: string
+                            value: null
+                        time_code:
+                            type: string
+                            value: null
+                        title:
+                            type: string
+                            value: null
+                    value: null
+                value:
+                    path: result
+                    ref_node: "1433533"
+            - name: keyword
+              input:
+                value:
+                    path: keyword
+                    ref_node: "100001"
+            - name: current_time
+              input:
+                type: string
+                value:
+                    path: current_time
+                    ref_node: "1433533"
+        node_outputs:
+            output:
+                type: string
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            switch: false
+            timeoutMs: 180000
+    - id: "155140"
+      type: condition
+      title: 选择器
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Condition-v2.jpg
+      description: "连接多个下游分支，若设定的条件成立则仅运行对应的分支，若均不成立则只运行“否则”分支"
+      position:
+        x: 2020
+        y: 96.94999999999999
+      parameters:
+        branches:
+            - condition:
+                conditions:
+                    - left:
+                        input:
+                            value:
+                                path: keyword
+                                ref_node: "100001"
+                      operator: 7
+                      right:
+                        input:
+                            type: string
+                            value: "ai"
+                    - left:
+                        input:
+                            value:
+                                path: keyword
+                                ref_node: "100001"
+                      operator: 7
+                      right:
+                        input:
+                            type: string
+                            value: "AI"
+                    - left:
+                        input:
+                            value:
+                                path: keyword
+                                ref_node: "100001"
+                      operator: 7
+                      right:
+                        input:
+                            type: string
+                            value: "人工智能"
+                logic: 1
+    - id: "1401402"
+      type: code
+      title: 财经-rss解析
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Code-v2.jpg
+      description: "编写代码，处理输入变量来生成返回值"
+      version: v2
+      position:
+        x: 2020
+        y: 556.95
+      parameters:
+        code: "import xml.etree.ElementTree as ET\nimport re\nimport time\nimport json\nfrom urllib.request import urlopen, Request\nfrom datetime import datetime, timedelta, timezone\nfrom concurrent.futures import ThreadPoolExecutor, as_completed\nfrom email.utils import parsedate_to_datetime\nfrom collections import Counter\n\n# ============================================================\n# 基础工具函数\n# ============================================================\n\ndef get_beijing_time():\n    utc_now = datetime.now(timezone.utc)\n    return utc_now + timedelta(hours=8)\n\ndef is_chinese_content(text):\n    if not text:\n        return False\n    chinese_chars = len(re.findall(r'[\\u4e00-\\u9fa5]', text))\n    total_chars = len(re.sub(r'\\s+', '', text))\n    return chinese_chars / total_chars >= 0.30 if total_chars > 0 else False\n\ndef process_content(html_text):\n    if not html_text: \n        return \"\"\n    clean_text = re.sub(r'<[^>]+>', '', html_text)\n    clean_text = re.sub(r'[\\r\\n\\t]+', ' ', clean_text).strip()\n    clean_text = re.sub(r'\\s+', ' ', clean_text)\n    limit = 350 \n    return clean_text[:limit] + \"...\" if len(clean_text) > limit else clean_text\n\ndef parse_time(raw_time):\n    if not raw_time:\n        now = get_beijing_time()\n        return now.strftime(\"%Y-%m-%d %H:%M\"), int(now.timestamp())\n    \n    dt_obj = None\n    raw_time = raw_time.strip()\n    \n    try:\n        dt_obj = parsedate_to_datetime(raw_time)\n    except:\n        pass\n\n    if dt_obj is None:\n        try:\n            dt_obj = datetime.strptime(\" \".join(raw_time.split()), \"%Y-%m-%d %H:%M:%S %z\")\n        except:\n            pass\n            \n    if dt_obj is None:\n        try:\n            dt_obj = datetime.fromisoformat(raw_time)\n        except:\n            pass\n\n    if dt_obj:\n        try:\n            tz_beijing = timezone(timedelta(hours=8))\n            dt_beijing = dt_obj.astimezone(tz_beijing)\n            return dt_beijing.strftime(\"%Y-%m-%d %H:%M\"), int(dt_beijing.timestamp())\n        except:\n            pass\n\n    now = get_beijing_time()\n    return now.strftime(\"%Y-%m-%d %H:%M\"), int(now.timestamp())\n\n# ============================================================\n# 增强版语义去重\n# ============================================================\n\ndef extract_keywords(text):\n    if not text:\n        return set()\n    \n    keywords = set()\n    english_brands = re.findall(r'\\b[A-Z][A-Za-z0-9]*(?:\\s[A-Z][A-Za-z0-9]*)*\\b', text)\n    keywords.update([b.lower() for b in english_brands if len(b) >= 2])\n    chinese_words = re.findall(r'[\\u4e00-\\u9fa5]{2,4}', text)\n    keywords.update(chinese_words)\n    numbers = re.findall(r'\\d+(?:\\.\\d+)?(?:亿|万|%|美元|元)?', text)\n    keywords.update(numbers)\n    stop_words = {'发布', '宣布', '表示', '报道', '消息', '显示', '公司', '企业', '市场', '今日', '今天'}\n    keywords = keywords - stop_words\n    \n    return keywords\n\ndef calculate_semantic_similarity(title1, title2, desc1=\"\", desc2=\"\"):\n    kw1_title = extract_keywords(title1)\n    kw2_title = extract_keywords(title2)\n    kw1_desc = extract_keywords(desc1[:100])\n    kw2_desc = extract_keywords(desc2[:100])\n    \n    kw1 = kw1_title | kw1_desc\n    kw2 = kw2_title | kw2_desc\n    \n    if not kw1 or not kw2:\n        return 0\n    \n    intersection = len(kw1 & kw2)\n    union = len(kw1 | kw2)\n    base_score = intersection / union if union > 0 else 0\n    \n    # 财经领域核心实体\n    core_entities = {\n        '茅台', '宁德', '比亚迪', '中信', '招商', '平安', '工商', '建设', '农业',\n        '腾讯', '阿里', '美团', '京东', '拼多多', '字节', '华为', '小米',\n        '特斯拉', 'tesla', '苹果', 'apple', '英伟达', 'nvidia', '微软', 'microsoft',\n        '央行', '证监会', '银保监', '发改委', '财政部', '美联储', 'fed',\n        'a股', '港股', '美股', '沪指', '深成指', '恒指', '纳斯达克', '道琼斯',\n        '降息', '加息', 'lpr', 'gdp', 'cpi', 'pmi'\n    }\n    \n    shared_core = (kw1 & kw2) & core_entities\n    if shared_core:\n        base_score = min(1.0, base_score + 0.3)\n    \n    event_patterns = {\n        '融资': ['融资', '注资', '投资', '估值', '上市', 'ipo'],\n        '业绩': ['营收', '净利', '财报', '业绩', '盈利', '亏损'],\n        '政策': ['政策', '监管', '规定', '通知', '意见', '条例'],\n    }\n    \n    text1 = title1 + desc1[:50]\n    text2 = title2 + desc2[:50]\n    \n    for event_type, patterns in event_patterns.items():\n        match1 = any(p in text1 for p in patterns)\n        match2 = any(p in text2 for p in patterns)\n        if match1 and match2 and shared_core:\n            base_score = min(1.0, base_score + 0.2)\n            break\n    \n    return base_score\n\ndef smart_deduplicate(items, threshold=0.50):\n    if not items:\n        return []\n    \n    items.sort(key=lambda x: (len(x.get('description', '')), x.get('_timestamp', 0)), reverse=True)\n    \n    unique_items = []\n    \n    for item in items:\n        is_duplicate = False\n        matched_index = -1\n        \n        for idx, existing in enumerate(unique_items):\n            similarity = calculate_semantic_similarity(\n                item['title'], \n                existing['title'],\n                item.get('description', ''),\n                existing.get('description', '')\n            )\n            \n            if similarity > threshold:\n                is_duplicate = True\n                matched_index = idx\n                break\n        \n        if not is_duplicate:\n            item['_heat_count'] = 1\n            item['_sources_list'] = [item['source']]\n            item['_best_link'] = item['link']\n            item['_content_length'] = len(item.get('description', ''))\n            unique_items.append(item)\n        else:\n            existing = unique_items[matched_index]\n            existing['_heat_count'] = existing.get('_heat_count', 1) + 1\n            \n            sources = existing.get('_sources_list', [])\n            if item['source'] not in sources:\n                sources.append(item['source'])\n            existing['_sources_list'] = sources\n            \n            if len(item.get('description', '')) > existing.get('_content_length', 0):\n                existing['_best_link'] = item['link']\n                existing['_content_length'] = len(item.get('description', ''))\n    \n    return unique_items\n\n# ============================================================\n# 热点词提取\n# ============================================================\n\ndef extract_trending_words(news_items, top_n=20):\n    stop_words = {\n        '的', '了', '是', '在', '和', '与', '或', '等', '中', '为', '将', '已', '被',\n        '今日', '今天', '昨日', '消息', '报道', '表示', '显示', '发布', '宣布',\n        '市场', '公司', '企业', '行业', '投资', '经济',\n        'the', 'a', 'an', 'is', 'are', 'to', 'of', 'in', 'for', 'and', 'or',\n    }\n    \n    words = []\n    for item in news_items:\n        title = item.get('title', '')\n        chinese_words = re.findall(r'[\\u4e00-\\u9fa5]{2,6}', title)\n        words.extend(chinese_words)\n        english_words = re.findall(r'[A-Za-z][A-Za-z0-9\\.]*[A-Za-z0-9]', title)\n        words.extend([w for w in english_words if len(w) >= 2])\n    \n    word_counts = Counter([w.lower() for w in words if w.lower() not in stop_words])\n    return [word for word, count in word_counts.most_common(top_n) if count >= 2]\n\n# ============================================================\n# 信源均衡\n# ============================================================\n\ndef balance_sources(items, max_total=80, max_per_source_ratio=0.40, min_per_source=3):\n    if not items:\n        return []\n    \n    source_groups = {}\n    for item in items:\n        source = item.get('source', '未知')\n        if source not in source_groups:\n            source_groups[source] = []\n        source_groups[source].append(item)\n    \n    for source in source_groups:\n        source_groups[source].sort(\n            key=lambda x: (x.get('_heat_count', 1), x.get('_score', 0), x.get('_timestamp', 0)), \n            reverse=True\n        )\n    \n    max_per_source = max(min_per_source, int(max_total * max_per_source_ratio))\n    final_items = []\n    \n    for source, group_items in source_groups.items():\n        take_count = min(len(group_items), min_per_source)\n        final_items.extend(group_items[:take_count])\n    \n    remaining = max_total - len(final_items)\n    round_index = min_per_source\n    \n    while remaining > 0:\n        added_this_round = False\n        for source, group_items in source_groups.items():\n            current_source_count = sum(1 for i in final_items if i.get('source') == source)\n            if round_index < len(group_items) and current_source_count < max_per_source:\n                final_items.append(group_items[round_index])\n                remaining -= 1\n                added_this_round = True\n                if remaining <= 0:\n                    break\n        if not added_this_round:\n            break\n        round_index += 1\n    \n    return final_items\n\n# ============================================================\n# RSS 抓取\n# ============================================================\n\ndef fetch_source_data(src):\n    news_items = []\n    headers = {'User-Agent': 'Mozilla/5.0 (compatible; CozeBot/1.0)'}\n    try:\n        req = Request(src[\"url\"], headers=headers)\n        response = urlopen(req, timeout=10.0)\n        xml_data = response.read()\n        root = ET.fromstring(xml_data)\n        \n        items = root.findall('./channel/item')\n        if not items: \n            items = root.findall('.//{http://www.w3.org/2005/Atom}entry')\n\n        for item in items:\n            title = item.find('title').text if item.find('title') is not None else \"无标题\"\n            link = item.find('link').text if item.find('link') is not None else \"\"\n            \n            if not is_chinese_content(title):\n                continue\n            \n            content_encoded = item.find('{http://purl.org/rss/1.0/modules/content/}encoded')\n            description = item.find('description')\n            if description is None: \n                description = item.find('{http://purl.org/rss/1.0/modules/content/}encoded')\n            \n            raw_desc = \"\"\n            if content_encoded is not None and content_encoded.text:\n                raw_desc = content_encoded.text\n            elif description is not None and description.text:\n                raw_desc = description.text\n            \n            description_text = process_content(str(raw_desc))\n            \n            if not is_chinese_content(description_text):\n                continue\n            \n            pub_date = item.find('pubDate').text if item.find('pubDate') is not None else \"\"\n            time_str, timestamp = parse_time(pub_date)\n\n            news_items.append({\n                \"title\": title,\n                \"description\": description_text,\n                \"link\": link,\n                \"time_code\": time_str,\n                \"source\": src[\"source\"],\n                \"_timestamp\": timestamp\n            })\n    except:\n        pass \n    \n    return src[\"source\"], news_items\n\n# ============================================================\n# 主函数\n# ============================================================\n\nasync def main(args):\n    now_obj = get_beijing_time()\n    current_time_str = now_obj.strftime(\"%Y-%m-%d %H:%M\")\n    \n    one_day_ago = now_obj - timedelta(hours=24)\n    threshold_timestamp = int(one_day_ago.timestamp())\n\n    # 解析关键词\n    raw_input = args.get('params', {}).get('search_keywords') or args.get('search_keywords')\n    search_terms = []\n    if raw_input:\n        try:\n            if isinstance(raw_input, str) and raw_input.startswith('['):\n                search_terms = json.loads(raw_input)\n            elif isinstance(raw_input, str):\n                search_terms = [t.strip().lower() for t in raw_input.replace('，', ',').split(',') if t.strip()]\n            elif isinstance(raw_input, list):\n                search_terms = raw_input\n        except:\n            search_terms = [str(raw_input).strip().lower()]\n    \n    search_terms = [str(t).lower() for t in search_terms if t]\n\n    # \U0001F525 财经专属RSS源（7个）\n    rss_sources = [\n        {\"source\": \"财联社\", \"url\": \"https://rsshub.rssforever.com/cls/depth/1000\"},\n        {\"source\": \"财新网\", \"url\": \"https://rsshub.rssforever.com/caixin/latest\"},\n        {\"source\": \"华尔街见闻\", \"url\": \"https://dedicated.wallstreetcn.com/rss.xml\"},\n        {\"source\": \"格隆汇\", \"url\": \"https://rsshub.rssforever.com/gelonghui/hot-article\"},\n        {\"source\": \"钛媒体\", \"url\": \"https://www.tmtpost.com/rss.xml\"},\n        {\"source\": \"界面\", \"url\": \"https://a.jiemian.com/index.php?m=article&a=rss\"},\n        {\"source\": \"第一财经\", \"url\": \"https://rsshub.rssforever.com/yicai/headline\"}\n    ]\n    \n    # 统计数据结构\n    source_stats = {src[\"source\"]: {\"fetched\": 0, \"time_ok\": 0, \"matched\": 0, \"output\": 0} for src in rss_sources}\n    \n    all_raw_items = []\n    \n    with ThreadPoolExecutor(max_workers=10) as executor:\n        future_to_src = {executor.submit(fetch_source_data, src): src for src in rss_sources}\n        \n        for future in as_completed(future_to_src):\n            try:\n                source_name, raw_items = future.result()\n                source_stats[source_name][\"fetched\"] = len(raw_items)\n                \n                # 时间过滤\n                time_filtered = [\n                    item for item in raw_items \n                    if item.get('_timestamp', 0) >= threshold_timestamp\n                ]\n                source_stats[source_name][\"time_ok\"] = len(time_filtered)\n                \n                # 关键词匹配\n                matched_items = []\n                for item in time_filtered:\n                    relevance_score = 0\n                    is_match = False\n                    \n                    if not search_terms:\n                        is_match = True\n                        relevance_score = 1\n                    else:\n                        title_lower = item['title'].lower()\n                        desc_lower = item['description'].lower()\n                        for term in search_terms:\n                            if term in title_lower:\n                                relevance_score += 100\n                                is_match = True\n                            elif term in desc_lower:\n                                relevance_score += 50\n                                is_match = True\n                    \n                    if is_match:\n                        item['_score'] = relevance_score\n                        matched_items.append(item)\n                \n                source_stats[source_name][\"matched\"] = len(matched_items)\n                all_raw_items.extend(matched_items)\n                \n            except:\n                pass\n\n    # 热点词\n    trending_words = extract_trending_words(all_raw_items, top_n=20)\n\n    # 去重\n    before_dedup = len(all_raw_items)\n    deduplicated_items = smart_deduplicate(all_raw_items, threshold=0.50)\n    after_dedup = len(deduplicated_items)\n    \n    # 信源均衡\n    balanced_items = balance_sources(deduplicated_items)\n    \n    # 统计最终输出\n    for item in balanced_items:\n        src = item.get('source', '')\n        if src in source_stats:\n            source_stats[src][\"output\"] += 1\n    \n    # 排序\n    balanced_items.sort(\n        key=lambda x: (\n            x.get('_heat_count', 1),\n            x.get('_score', 0),\n            x.get('_timestamp', 0)\n        ), \n        reverse=True\n    )\n    \n    # 构建输出\n    result_list = []\n    for idx, item in enumerate(balanced_items):\n        result_list.append({\n            \"rank\": idx + 1,\n            \"title\": item['title'],\n            \"description\": item['description'],\n            \"link\": item.get('_best_link', item['link']),\n            \"time_code\": item['time_code'],\n            \"source\": item['source'],\n            \"heat_count\": item.get('_heat_count', 1)\n        })\n\n    # ============================================================\n    # 结构化 Debug 输出\n    # ============================================================\n    \n    debug_lines = []\n    debug_lines.append(\"=\" * 50)\n    debug_lines.append(\"RSS 新闻抓取报告\")\n    debug_lines.append(\"=\" * 50)\n    debug_lines.append(f\"时间: {current_time_str}\")\n    debug_lines.append(f\"关键词: {', '.join(search_terms[:5])}{'...' if len(search_terms) > 5 else ''}\")\n    debug_lines.append(\"\")\n    \n    # 信源明细表\n    debug_lines.append(\"-\" * 50)\n    debug_lines.append(f\"{'信源':<10} {'抓取':>6} {'时效':>6} {'命中':>6} {'输出':>6}\")\n    debug_lines.append(\"-\" * 50)\n    \n    total_fetched = 0\n    total_time_ok = 0\n    total_matched = 0\n    total_output = 0\n    \n    for src in rss_sources:\n        name = src[\"source\"]\n        stats = source_stats[name]\n        \n        total_fetched += stats[\"fetched\"]\n        total_time_ok += stats[\"time_ok\"]\n        total_matched += stats[\"matched\"]\n        total_output += stats[\"output\"]\n        \n        # 状态标记\n        if stats[\"output\"] > 0:\n            status = \"[Y]\"\n        elif stats[\"matched\"] > 0:\n            status = \"[?]\"\n        elif stats[\"fetched\"] > 0:\n            status = \"[-]\"\n        else:\n            status = \"[X]\"\n        \n        debug_lines.append(f\"{status} {name:<8} {stats['fetched']:>6} {stats['time_ok']:>6} {stats['matched']:>6} {stats['output']:>6}\")\n    \n    debug_lines.append(\"-\" * 50)\n    debug_lines.append(f\"{'合计':<10} {total_fetched:>6} {total_time_ok:>6} {total_matched:>6} {total_output:>6}\")\n    debug_lines.append(\"-\" * 50)\n    debug_lines.append(\"\")\n    \n    # 处理统计\n    debug_lines.append(\"处理统计:\")\n    debug_lines.append(f\"  去重前: {before_dedup} 条\")\n    debug_lines.append(f\"  去重后: {after_dedup} 条 (移除 {before_dedup - after_dedup} 条重复)\")\n    debug_lines.append(f\"  最终输出: {len(result_list)} 条\")\n    debug_lines.append(\"\")\n    \n    # 热点词\n    if trending_words:\n        debug_lines.append(f\"热点词: {', '.join(trending_words[:8])}\")\n    \n    debug_lines.append(\"=\" * 50)\n    \n    debug_info = \"\\n\".join(debug_lines)\n\n    return {\n        \"result\": result_list,\n        \"debug_info\": debug_info,\n        \"current_time\": current_time_str\n    }\n"
+        language: 3
+        node_inputs:
+            - name: search_keywords
+              input:
+                value:
+                    path: output
+                    ref_node: "1326525"
+        node_outputs:
+            current_time:
+                type: string
+                value: null
+            debug_info:
+                type: string
+                value: null
+            result:
+                type: list
+                items:
+                    type: object
+                    properties:
+                        description:
+                            type: string
+                            value: null
+                        heat_count:
+                            type: string
+                            value: null
+                        link:
+                            type: string
+                            value: null
+                        source:
+                            type: string
+                            value: null
+                        sources_display:
+                            type: string
+                            value: null
+                        time_code:
+                            type: string
+                            value: null
+                        title:
+                            type: string
+                            value: null
+                    value: null
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            switch: false
+            timeoutMs: 60000
+    - id: "1735296"
+      type: condition
+      title: 选择器_1
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Condition-v2.jpg
+      description: "连接多个下游分支，若设定的条件成立则仅运行对应的分支，若均不成立则只运行“否则”分支"
+      position:
+        x: 1100
+        y: 208.94999999999996
+      parameters:
+        branches:
+            - condition:
+                conditions:
+                    - left:
+                        input:
+                            value:
+                                path: keyword
+                                ref_node: "100001"
+                      operator: 7
+                      right:
+                        input:
+                            type: string
+                            value: "ai"
+                    - left:
+                        input:
+                            value:
+                                path: keyword
+                                ref_node: "100001"
+                      operator: 7
+                      right:
+                        input:
+                            type: string
+                            value: "AI"
+                    - left:
+                        input:
+                            value:
+                                path: keyword
+                                ref_node: "100001"
+                      operator: 7
+                      right:
+                        input:
+                            type: string
+                            value: "人工智能"
+                    - left:
+                        input:
+                            value:
+                                path: keyword
+                                ref_node: "100001"
+                      operator: 7
+                      right:
+                        input:
+                            type: string
+                            value: "科技"
+                logic: 1
+    - id: "1584268"
+      type: llm
+      title: 财经资讯处理
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-LLM-v2.jpg
+      description: "调用大语言模型,使用变量和提示词生成回复"
+      version: "3"
+      position:
+        x: 2480
+        y: 530.95
+      parameters:
+        fcParam:
+            llmNodeUID: ""
+            pluginFCParam: {}
+            spaceID: ""
+            workflowVersion: ""
+        fcParamVar:
+            knowledgeFCParam: {}
+        llmParam:
+            - name: generationDiversity
+              input:
+                type: string
+                value: default_val
+            - name: apiMode
+              input:
+                type: integer
+                value: "0"
+            - name: maxTokens
+              input:
+                type: integer
+                value: "32768"
+            - name: spCurrentTime
+              input:
+                type: boolean
+                value: false
+            - name: spAntiLeak
+              input:
+                type: boolean
+                value: false
+            - name: thinkingType
+              input:
+                type: string
+                value: disabled
+            - name: responseFormat
+              input:
+                type: integer
+                value: "2"
+            - name: modelName
+              input:
+                type: string
+                value: DeepSeek-V3.2
+            - name: modelType
+              input:
+                type: integer
+                value: "1764929611"
+            - name: parameters
+              input:
+                type: object
+                value: null
+            - name: prompt
+              input:
+                type: string
+                value: ""
+            - name: enableChatHistory
+              input:
+                type: boolean
+                value: false
+            - name: chatHistoryRound
+              input:
+                type: integer
+                value: "3"
+            - name: systemPrompt
+              input:
+                type: string
+                value: "# Role\n你是财经新闻编辑，负责筛选、排序和内容优化。\n\n# Input Data\n- 新闻列表：{{news_list}}\n- 当前时间：{{current_time}}\n- 用户关注主题：{{keyword}}\n\n---\n\n# 核心规则\n\n## 1. 语义去重\n判断哪些新闻是同一事件，合并后保留内容最丰富的版本。\n\n## 2. 相关性过滤\n删除与「{{keyword}}」不直接相关的新闻。\n\n**边界规则**：\n- 财经 = 金融市场 + 宏观经济 + 企业财务事件\n- ✅ 属于财经：股市行情、央行政策、利率汇率、企业财报/并购/IPO、基金债券、大宗商品价格、经济数据（GDP/CPI/PMI）\n- ✅ 属于财经：科技公司的财报数据、股价异动、市值变化、大规模资本支出分析（重点在\"财务数字和市场影响\"）\n- ❌ 不属于财经：科技公司的产品发布、技术突破、产业链动态\n- ❌ 不属于财经：半导体量产、AI 模型发布、芯片技术进展\n- 判断标准：读者看完后的反应是\"我要调整持仓\"→ 财经；\"这个技术好酷\"→ 科技\n\n## 3. 排序规则\n\n按**新闻价值**排序，思考：**读者最想先看到什么？**\n\n| 优先级 | 新闻类型 | 示例 |\n|--------|----------|------|\n| ⭐⭐⭐⭐⭐ | 重大政策/监管动向 | 央行降息、证监会新规 |\n| ⭐⭐⭐⭐⭐ | 市场重大波动 | A股暴涨暴跌、美股熔断 |\n| ⭐⭐⭐⭐⭐ | 头部企业重大事件 | 茅台业绩暴雷、腾讯大额回购 |\n| ⭐⭐⭐⭐ | 行业格局变化 | 新能源车销量反超燃油车 |\n| ⭐⭐⭐⭐ | IPO/融资/并购 | 字节跳动上市、大额收购 |\n| ⭐⭐⭐ | 财报/业绩 | 龙头企业季报 |\n| ⭐⭐⭐ | 宏观经济数据 | GDP、CPI、PMI发布 |\n| ⭐⭐ | 分析师观点/研报 | 券商看多看空 |\n| ⭐ | 行业一般动态 | 常规业务进展 |\n\n**同一优先级内，按时间排序（越新越前）。**\n\n## 4. 来源显示规则\n- **只显示一个来源**（选择内容最丰富的那个）\n\n## 5. Tag 规则\n- 根据标题和摘要，提炼**具体领域**（2-6字）\n- 禁止使用\"财经\"、\"经济\"等宽泛词\n- 示例：A股、港股、央行政策、新能源、房地产、消费、银行、IPO\n\n## 6. 摘要规则\n- **极简主义**：目标 **100-120 字**（LLM通常会写超，所以这里故意写低）。\n- **必须**以完整句子结尾。\n- **严格自检**：在输出前计算字数，若超过 120 字，必须删减修饰语、背景介绍，只保留核心事实。\n- 禁止编造。\n\n## 7. 数量控制\n\n| 有效新闻数 N | top_news | quick_news |\n|-------------|----------|------------|\n| N ≤ 10 | 全部 | 空数组 [] |\n| 11 ≤ N ≤ 20 | 7-8 条 | 剩余全部 |\n| N > 20 | 8 条 | 最多 10 条 |\n\n---\n\n# Output Format\n\n纯 JSON，禁止 Markdown。\n\n{\n    \"top_news\": [ \n        {\n            \"title\": \"精炼标题\",\n            \"tag\": \"具体领域标签\",\n            \"time\": \"YYYY-MM-DD HH:mm\", \n            \"summary\": \"100-120字摘要\",\n            \"source\": \"单个来源\",\n            \"link\": \"原文链接\"\n        }\n    ],\n    \"quick_news\": [\n        {\n            \"title\": \"标题\",\n            \"time\": \"YYYY-MM-DD HH:mm\",\n            \"source\": \"来源\",\n            \"link\": \"链接\"\n        }\n    ]\n}\n"
+            - name: stableSystemPrompt
+              input:
+                type: string
+                value: ""
+            - name: canContinue
+              input:
+                type: boolean
+                value: false
+            - name: loopPromptVersion
+              input:
+                type: string
+                value: ""
+            - name: loopPromptName
+              input:
+                type: string
+                value: ""
+            - name: loopPromptId
+              input:
+                type: string
+                value: ""
+        node_inputs:
+            - name: news_list
+              input:
+                value:
+                    path: result
+                    ref_node: "1401402"
+            - name: keyword
+              input:
+                value:
+                    path: keyword
+                    ref_node: "100001"
+            - name: current_time
+              input:
+                value:
+                    path: current_time
+                    ref_node: "1401402"
+        node_outputs:
+            output:
+                type: string
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            switch: false
+            timeoutMs: 180000
+    - id: "1433533"
+      type: code
+      title: AI&科技-rss解析_1
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Code-v2.jpg
+      description: "编写代码，处理输入变量来生成返回值"
+      version: v2
+      position:
+        x: 1560
+        y: 163.3
+      parameters:
+        code: "import xml.etree.ElementTree as ET\nimport re\nimport json\nfrom urllib.request import urlopen, Request\nfrom datetime import datetime, timedelta, timezone\nfrom email.utils import parsedate_to_datetime\nfrom collections import Counter\n\n# ============================================================\n# 基础工具函数\n# ============================================================\n\ndef get_beijing_time():\n    utc_now = datetime.now(timezone.utc)\n    return utc_now + timedelta(hours=8)\n\ndef is_chinese_content(text):\n    if not text:\n        return False\n    chinese_chars = len(re.findall(r'[\\u4e00-\\u9fa5]', text))\n    total_chars = len(re.sub(r'\\s+', '', text))\n    return chinese_chars / total_chars >= 0.30 if total_chars > 0 else False\n\ndef process_content(html_text):\n    if not html_text: \n        return \"\"\n    clean_text = re.sub(r'<[^>]+>', '', html_text)\n    clean_text = re.sub(r'[\\r\\n\\t]+', ' ', clean_text).strip()\n    clean_text = re.sub(r'\\s+', ' ', clean_text)\n    limit = 350 \n    return clean_text[:limit] + \"...\" if len(clean_text) > limit else clean_text\n\ndef parse_time(raw_time):\n    if not raw_time:\n        now = get_beijing_time()\n        return now.strftime(\"%Y-%m-%d %H:%M\"), int(now.timestamp())\n    \n    dt_obj = None\n    raw_time = raw_time.strip()\n    \n    try:\n        dt_obj = parsedate_to_datetime(raw_time)\n    except:\n        pass\n\n    if dt_obj is None:\n        try:\n            dt_obj = datetime.strptime(\" \".join(raw_time.split()), \"%Y-%m-%d %H:%M:%S %z\")\n        except:\n            pass\n            \n    if dt_obj is None:\n        try:\n            dt_obj = datetime.fromisoformat(raw_time)\n        except:\n            pass\n\n    if dt_obj:\n        try:\n            tz_beijing = timezone(timedelta(hours=8))\n            dt_beijing = dt_obj.astimezone(tz_beijing)\n            return dt_beijing.strftime(\"%Y-%m-%d %H:%M\"), int(dt_beijing.timestamp())\n        except:\n            pass\n\n    now = get_beijing_time()\n    return now.strftime(\"%Y-%m-%d %H:%M\"), int(now.timestamp())\n\n# ============================================================\n# 增强版语义去重\n# ============================================================\n\ndef extract_keywords(text):\n    if not text:\n        return set()\n    \n    keywords = set()\n    english_brands = re.findall(r'\\b[A-Z][A-Za-z0-9]*(?:\\s[A-Z][A-Za-z0-9]*)*\\b', text)\n    keywords.update([b.lower() for b in english_brands if len(b) >= 2])\n    chinese_words = re.findall(r'[\\u4e00-\\u9fa5]{2,4}', text)\n    keywords.update(chinese_words)\n    numbers = re.findall(r'\\d+(?:\\.\\d+)?(?:亿|万|%|美元|元)?', text)\n    keywords.update(numbers)\n    stop_words = {'发布', '宣布', '表示', '报道', '消息', '显示', '公司', '企业', '市场', '今日', '今天'}\n    keywords = keywords - stop_words\n    \n    return keywords\n\ndef calculate_semantic_similarity(title1, title2, desc1=\"\", desc2=\"\"):\n    kw1_title = extract_keywords(title1)\n    kw2_title = extract_keywords(title2)\n    kw1_desc = extract_keywords(desc1[:100])\n    kw2_desc = extract_keywords(desc2[:100])\n    \n    kw1 = kw1_title | kw1_desc\n    kw2 = kw2_title | kw2_desc\n    \n    if not kw1 or not kw2:\n        return 0\n    \n    intersection = len(kw1 & kw2)\n    union = len(kw1 | kw2)\n    base_score = intersection / union if union > 0 else 0\n    \n    core_entities = {\n        'openai', 'google', 'microsoft', 'apple', 'nvidia', 'meta', 'amazon',\n        'anthropic', 'deepseek', 'bytedance', '字节', '华为', '腾讯', '阿里',\n        '百度', '小米', '特斯拉', 'tesla', 'spacex', '英伟达', 'minimax',\n        '苹果', '三星', 'samsung', '比亚迪', '蔚来', '理想', '小鹏'\n    }\n    \n    shared_core = (kw1 & kw2) & core_entities\n    if shared_core:\n        base_score = min(1.0, base_score + 0.3)\n    \n    event_patterns = {\n        '融资': ['融资', '注资', '投资', '估值'],\n        '发布': ['发布', '推出', '上线', '发售'],\n        '合作': ['合作', '联合', '携手'],\n    }\n    \n    text1 = title1 + desc1[:50]\n    text2 = title2 + desc2[:50]\n    \n    for event_type, patterns in event_patterns.items():\n        match1 = any(p in text1 for p in patterns)\n        match2 = any(p in text2 for p in patterns)\n        if match1 and match2 and shared_core:\n            base_score = min(1.0, base_score + 0.2)\n            break\n    \n    return base_score\n\ndef smart_deduplicate(items, threshold=0.50):\n    if not items:\n        return []\n    \n    items.sort(key=lambda x: (len(x.get('description', '')), x.get('_timestamp', 0)), reverse=True)\n    \n    unique_items = []\n    \n    for item in items:\n        is_duplicate = False\n        matched_index = -1\n        \n        for idx, existing in enumerate(unique_items):\n            similarity = calculate_semantic_similarity(\n                item['title'], \n                existing['title'],\n                item.get('description', ''),\n                existing.get('description', '')\n            )\n            \n            if similarity > threshold:\n                is_duplicate = True\n                matched_index = idx\n                break\n        \n        if not is_duplicate:\n            item['_heat_count'] = 1\n            item['_sources_list'] = [item['source']]\n            item['_best_link'] = item['link']\n            item['_content_length'] = len(item.get('description', ''))\n            unique_items.append(item)\n        else:\n            existing = unique_items[matched_index]\n            existing['_heat_count'] = existing.get('_heat_count', 1) + 1\n            \n            sources = existing.get('_sources_list', [])\n            if item['source'] not in sources:\n                sources.append(item['source'])\n            existing['_sources_list'] = sources\n            \n            if len(item.get('description', '')) > existing.get('_content_length', 0):\n                existing['_best_link'] = item['link']\n                existing['_content_length'] = len(item.get('description', ''))\n    \n    return unique_items\n\n# ============================================================\n# 热点词提取\n# ============================================================\n\ndef extract_trending_words(news_items, top_n=20):\n    stop_words = {\n        '的', '了', '是', '在', '和', '与', '或', '等', '中', '为', '将', '已', '被',\n        '今日', '今天', '昨日', '消息', '报道', '表示', '显示', '发布', '宣布',\n        'the', 'a', 'an', 'is', 'are', 'to', 'of', 'in', 'for', 'and', 'or',\n    }\n    \n    words = []\n    for item in news_items:\n        title = item.get('title', '')\n        chinese_words = re.findall(r'[\\u4e00-\\u9fa5]{2,6}', title)\n        words.extend(chinese_words)\n        english_words = re.findall(r'[A-Za-z][A-Za-z0-9\\.]*[A-Za-z0-9]', title)\n        words.extend([w for w in english_words if len(w) >= 2])\n    \n    word_counts = Counter([w.lower() for w in words if w.lower() not in stop_words])\n    return [word for word, count in word_counts.most_common(top_n) if count >= 2]\n\n# ============================================================\n# 信源均衡\n# ============================================================\n\ndef balance_sources(items, max_total=80, max_per_source_ratio=0.40, min_per_source=3):\n    if not items:\n        return []\n    \n    source_groups = {}\n    for item in items:\n        source = item.get('source', '未知')\n        if source not in source_groups:\n            source_groups[source] = []\n        source_groups[source].append(item)\n    \n    for source in source_groups:\n        source_groups[source].sort(\n            key=lambda x: (x.get('_heat_count', 1), x.get('_score', 0), x.get('_timestamp', 0)), \n            reverse=True\n        )\n    \n    max_per_source = max(min_per_source, int(max_total * max_per_source_ratio))\n    final_items = []\n    \n    for source, group_items in source_groups.items():\n        take_count = min(len(group_items), min_per_source)\n        final_items.extend(group_items[:take_count])\n    \n    remaining = max_total - len(final_items)\n    round_index = min_per_source\n    \n    while remaining > 0:\n        added_this_round = False\n        for source, group_items in source_groups.items():\n            current_source_count = sum(1 for i in final_items if i.get('source') == source)\n            if round_index < len(group_items) and current_source_count < max_per_source:\n                final_items.append(group_items[round_index])\n                remaining -= 1\n                added_this_round = True\n                if remaining <= 0:\n                    break\n        if not added_this_round:\n            break\n        round_index += 1\n    \n    return final_items\n\n# ============================================================\n# RSS 抓取 - 带错误诊断\n# ============================================================\n\ndef fetch_source_data_with_error(src):\n    news_items = []\n    error_msg = None\n    headers = {'User-Agent': 'Mozilla/5.0 (compatible; CozeBot/1.0)'}\n    \n    try:\n        req = Request(src[\"url\"], headers=headers)\n        response = urlopen(req, timeout=15.0)\n        xml_data = response.read()\n        root = ET.fromstring(xml_data)\n        \n        items = root.findall('./channel/item')\n        if not items: \n            items = root.findall('.//{http://www.w3.org/2005/Atom}entry')\n\n        for item in items:\n            title = item.find('title').text if item.find('title') is not None else \"无标题\"\n            link = item.find('link').text if item.find('link') is not None else \"\"\n            \n            if not is_chinese_content(title):\n                continue\n            \n            content_encoded = item.find('{http://purl.org/rss/1.0/modules/content/}encoded')\n            description = item.find('description')\n            if description is None: \n                description = item.find('{http://purl.org/rss/1.0/modules/content/}encoded')\n            \n            raw_desc = \"\"\n            if content_encoded is not None and content_encoded.text:\n                raw_desc = content_encoded.text\n            elif description is not None and description.text:\n                raw_desc = description.text\n            \n            description_text = process_content(str(raw_desc))\n            \n            if not is_chinese_content(description_text):\n                continue\n            \n            pub_date = item.find('pubDate').text if item.find('pubDate') is not None else \"\"\n            time_str, timestamp = parse_time(pub_date)\n\n            news_items.append({\n                \"title\": title,\n                \"description\": description_text,\n                \"link\": link,\n                \"time_code\": time_str,\n                \"source\": src[\"source\"],\n                \"_timestamp\": timestamp\n            })\n            \n    except Exception as e:\n        error_msg = str(type(e).__name__) + \": \" + str(e)[:80]\n    \n    return src[\"source\"], news_items, error_msg\n\n# ============================================================\n# 主函数\n# ============================================================\n\nasync def main(args):\n    now_obj = get_beijing_time()\n    current_time_str = now_obj.strftime(\"%Y-%m-%d %H:%M\")\n    \n    one_day_ago = now_obj - timedelta(hours=24)\n    threshold_timestamp = int(one_day_ago.timestamp())\n\n    # ============================================================\n    # \U0001F527 修复：安全获取参数（不使用默认值）\n    # ============================================================\n    raw_input = None\n    \n    try:\n        raw_input = args.get('search_keywords')\n    except:\n        pass\n    \n    if not raw_input:\n        try:\n            params = args.get('params')\n            if params:\n                if isinstance(params, dict):\n                    raw_input = params.get('search_keywords')\n                elif hasattr(params, 'get'):\n                    raw_input = params.get('search_keywords')\n        except:\n            pass\n\n    # 解析关键词\n    search_terms = []\n    if raw_input:\n        try:\n            if isinstance(raw_input, str) and raw_input.startswith('['):\n                search_terms = json.loads(raw_input)\n            elif isinstance(raw_input, str):\n                search_terms = [t.strip().lower() for t in raw_input.replace('，', ',').split(',') if t.strip()]\n            elif isinstance(raw_input, list):\n                search_terms = raw_input\n        except:\n            search_terms = [str(raw_input).strip().lower()]\n    \n    search_terms = [str(t).lower() for t in search_terms if t]\n\n    # 12个RSS源\n    rss_sources = [\n        {\"source\": \"IT之家\", \"url\": \"https://www.ithome.com/rss/\"},\n        {\"source\": \"36氪\", \"url\": \"https://rss.aishort.top/?type=36kr\"},\n        {\"source\": \"虎嗅\", \"url\": \"https://rss.huxiu.com/\"},\n        {\"source\": \"钛媒体\", \"url\": \"https://www.tmtpost.com/rss.xml\"},\n        {\"source\": \"界面\", \"url\": \"https://a.jiemian.com/index.php?m=article&a=rss\"},\n        {\"source\": \"AIbase\", \"url\": \"https://rsshub.rssforever.com/aibase/news\"},\n        {\"source\": \"量子位\", \"url\": \"https://rsshub.rssforever.com/qbitai/category/%E8%B5%84%E8%AE%AF\"},\n        {\"source\": \"机器之心\", \"url\": \"https://rsshub.rssforever.com/jiqizhixin\"},\n        {\"source\": \"华尔街见闻\", \"url\": \"https://dedicated.wallstreetcn.com/rss.xml\"},\n        {\"source\": \"快科技\", \"url\": \"https://rsshub.rssforever.com/mydrivers\"},\n        {\"source\": \"爱范儿\", \"url\": \"https://rsshub.rssforever.com/ifanr/app\"},\n        {\"source\": \"少数派\", \"url\": \"https://sspai.com/feed\"}\n    ]\n    \n    # 统计数据结构\n    source_stats = {}\n    for src in rss_sources:\n        source_stats[src[\"source\"]] = {\"fetched\": 0, \"time_ok\": 0, \"matched\": 0, \"output\": 0, \"error\": None}\n    \n    all_raw_items = []\n    \n    # 串行抓取（带错误诊断）\n    for src in rss_sources:\n        source_name, raw_items, error_msg = fetch_source_data_with_error(src)\n        \n        source_stats[source_name][\"fetched\"] = len(raw_items)\n        source_stats[source_name][\"error\"] = error_msg\n        \n        # 时间过滤\n        time_filtered = []\n        for item in raw_items:\n            ts = item.get('_timestamp')\n            if ts is None:\n                ts = 0\n            if ts >= threshold_timestamp:\n                time_filtered.append(item)\n        \n        source_stats[source_name][\"time_ok\"] = len(time_filtered)\n        \n        # 关键词匹配\n        matched_items = []\n        for item in time_filtered:\n            relevance_score = 0\n            is_match = False\n            \n            if not search_terms:\n                is_match = True\n                relevance_score = 1\n            else:\n                title_lower = item['title'].lower()\n                desc_lower = item['description'].lower()\n                for term in search_terms:\n                    if term in title_lower:\n                        relevance_score += 100\n                        is_match = True\n                    elif term in desc_lower:\n                        relevance_score += 50\n                        is_match = True\n            \n            if is_match:\n                item['_score'] = relevance_score\n                matched_items.append(item)\n        \n        source_stats[source_name][\"matched\"] = len(matched_items)\n        all_raw_items.extend(matched_items)\n\n    # 热点词\n    trending_words = extract_trending_words(all_raw_items, top_n=20)\n\n    # 去重\n    before_dedup = len(all_raw_items)\n    deduplicated_items = smart_deduplicate(all_raw_items, threshold=0.50)\n    after_dedup = len(deduplicated_items)\n    \n    # 信源均衡\n    balanced_items = balance_sources(deduplicated_items)\n    \n    # 统计最终输出\n    for item in balanced_items:\n        src = item.get('source', '')\n        if src in source_stats:\n            source_stats[src][\"output\"] += 1\n    \n    # 排序\n    balanced_items.sort(\n        key=lambda x: (\n            x.get('_heat_count', 1),\n            x.get('_score', 0),\n            x.get('_timestamp', 0)\n        ), \n        reverse=True\n    )\n    \n    # 构建输出\n    result_list = []\n    for idx, item in enumerate(balanced_items):\n        best_link = item.get('_best_link')\n        if not best_link:\n            best_link = item['link']\n        \n        heat = item.get('_heat_count')\n        if heat is None:\n            heat = 1\n            \n        result_list.append({\n            \"rank\": idx + 1,\n            \"title\": item['title'],\n            \"description\": item['description'],\n            \"link\": best_link,\n            \"time_code\": item['time_code'],\n            \"source\": item['source'],\n            \"heat_count\": heat\n        })\n\n    # ============================================================\n    # Debug 输出\n    # ============================================================\n    \n    debug_lines = []\n    debug_lines.append(\"=\" * 60)\n    debug_lines.append(\"RSS 新闻抓取报告\")\n    debug_lines.append(\"=\" * 60)\n    debug_lines.append(\"时间: \" + current_time_str)\n    \n    kw_display = \", \".join(search_terms[:5])\n    if len(search_terms) > 5:\n        kw_display += \"...\"\n    debug_lines.append(\"关键词: \" + kw_display)\n    debug_lines.append(\"\")\n    \n    debug_lines.append(\"-\" * 60)\n    debug_lines.append(\"信源抓取详情:\")\n    debug_lines.append(\"-\" * 60)\n    \n    total_fetched = 0\n    total_time_ok = 0\n    total_matched = 0\n    total_output = 0\n    error_count = 0\n    \n    for src in rss_sources:\n        name = src[\"source\"]\n        stats = source_stats[name]\n        \n        total_fetched += stats[\"fetched\"]\n        total_time_ok += stats[\"time_ok\"]\n        total_matched += stats[\"matched\"]\n        total_output += stats[\"output\"]\n        \n        err = stats[\"error\"]\n        if err:\n            error_count += 1\n            debug_lines.append(\"[X] \" + name + \": \" + err)\n        elif stats[\"output\"] > 0:\n            debug_lines.append(\"[Y] \" + name + \": 抓取\" + str(stats[\"fetched\"]) + \" 输出\" + str(stats[\"output\"]))\n        elif stats[\"fetched\"] > 0:\n            debug_lines.append(\"[-] \" + name + \": 抓取\" + str(stats[\"fetched\"]) + \" 命中0\")\n        else:\n            debug_lines.append(\"[X] \" + name + \": 无数据\")\n    \n    debug_lines.append(\"-\" * 60)\n    debug_lines.append(\"合计: 抓取\" + str(total_fetched) + \" 输出\" + str(total_output))\n    debug_lines.append(\"错误源: \" + str(error_count) + \"/\" + str(len(rss_sources)))\n    debug_lines.append(\"-\" * 60)\n    debug_lines.append(\"\")\n    debug_lines.append(\"去重: \" + str(before_dedup) + \" -> \" + str(after_dedup))\n    debug_lines.append(\"最终: \" + str(len(result_list)) + \" 条\")\n    \n    if trending_words:\n        debug_lines.append(\"热点词: \" + \", \".join(trending_words[:8]))\n    \n    debug_lines.append(\"=\" * 60)\n    \n    debug_info = \"\\n\".join(debug_lines)\n\n    return {\n        \"result\": result_list,\n        \"debug_info\": debug_info,\n        \"current_time\": current_time_str\n    }\n"
+        language: 3
+        node_inputs:
+            - name: search_keywords
+              input:
+                value:
+                    path: output
+                    ref_node: "1326525"
+        node_outputs:
+            current_time:
+                type: string
+                value: null
+            debug_info:
+                type: string
+                value: null
+            result:
+                type: list
+                items:
+                    type: object
+                    properties:
+                        description:
+                            type: string
+                            value: null
+                        heat_count:
+                            type: string
+                            value: null
+                        link:
+                            type: string
+                            value: null
+                        source:
+                            type: string
+                            value: null
+                        sources_display:
+                            type: string
+                            value: null
+                        time_code:
+                            type: string
+                            value: null
+                        title:
+                            type: string
+                            value: null
+                    value: null
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            switch: false
+            timeoutMs: 60000
+    - id: "1282926"
+      type: code
+      title: html处理
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Code-v2.jpg
+      description: "编写代码，处理输入变量来生成返回值"
+      version: v2
+      position:
+        x: 3027.120469736108
+        y: 919.4706839386022
+      parameters:
+        code: "import json\nimport datetime\nimport re\n\ndef smart_truncate_summary(text, max_length=120):\n    \"\"\"智能截断：在句子结束符处截断，不用省略号\"\"\"\n    if not text or len(text) <= max_length:\n        return text\n    \n    search_start = max_length\n    search_end = min(len(text), max_length + 60)\n    search_text = text[search_start:search_end]\n    \n    # 优先：句号、感叹号、问号\n    match = re.search(r'[。！？!?]', search_text)\n    if match:\n        return text[:search_start + match.end()]\n    \n    # 次选：分号、冒号\n    match = re.search(r'[；;：:]', search_text)\n    if match:\n        return text[:search_start + match.end()]\n    \n    # 再次选：逗号、顿号\n    match = re.search(r'[，,、]', search_text)\n    if match:\n        return text[:search_start + match.end()]\n    \n    return text[:search_end]\n\nasync def main(args):\n    raw_data = args.params.get('llm_result', {})\n    raw_keyword = args.params.get('keyword', '热点') \n    keyword_upper = str(raw_keyword).upper()\n    \n    data = {}\n    clean_json = \"\" \n    \n    try:\n        if isinstance(raw_data, dict):\n            data = raw_data\n        elif isinstance(raw_data, str):\n            clean_json = raw_data.replace(\"```json\", \"\").replace(\"```\", \"\").strip()\n            data = json.loads(clean_json)\n    except json.JSONDecodeError as e:\n        error_msg = f\"\"\"\n        <div style=\"color:red; padding:20px; background:#fff0f0; border:1px solid red;\">\n            <h3>JSON 解析失败</h3>\n            <p>错误: {str(e)}</p>\n            <pre>{clean_json[max(0, e.pos-50):min(len(clean_json), e.pos+50)]}</pre>\n        </div>\n        \"\"\"\n        return {\"final_html\": error_msg}\n    except Exception as e:\n        return {\"final_html\": f\"<h1>系统错误</h1><p>{str(e)}</p>\"}\n\n    utc_now = datetime.datetime.utcnow()\n    beijing_now = utc_now + datetime.timedelta(hours=8)\n    weekdays = [\"星期一\", \"星期二\", \"星期三\", \"星期四\", \"星期五\", \"星期六\", \"星期日\"]\n    date_header_str = beijing_now.strftime(\"%Y年%m月%d日 %H:%M\") + \" \" + weekdays[beijing_now.weekday()]\n    \n    today_short = beijing_now.strftime(\"%Y-%m-%d\")\n    yesterday_short = (beijing_now - datetime.timedelta(days=1)).strftime(\"%Y-%m-%d\")\n\n    h = beijing_now.hour\n    greeting = \"早上好\" if 5<=h<11 else \"中午好\" if 11<=h<13 else \"下午好\" if 13<=h<18 else \"晚上好\"\n\n    css = \"\"\"\n    <style>\n      body { font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; background-color: #f6f6f6; padding: 20px; color: #333; margin: 0; }\n      .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }\n      a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; pointer-events: none !important; }\n      .header { background: linear-gradient(135deg, #0066FF 0%, #0052cc 100%); color: white; padding: 35px 20px; text-align: center; }\n      .header h1 { margin: 0 0 10px 0; font-size: 22px; font-weight: 600; line-height: 1.4; }\n      .header-date { margin: 0; font-size: 13px; opacity: 0.95; color: #ffffff !important; }\n      .section-title { padding: 20px 20px 10px 20px; font-size: 18px; font-weight: bold; color: #111; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; }\n      .section-title span { margin-right: 6px; }\n      .card { padding: 20px; border-bottom: 1px solid #f0f0f0; }\n      .tag { display: inline-block; background: #eef4ff; color: #0066FF; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-bottom: 8px; }\n      .card-title { font-size: 19px; font-weight: bold; color: #1a1a1a; margin: 0 0 8px 0; line-height: 1.4; }\n      .meta-line { color: #999; font-size: 13px; margin-bottom: 12px; }\n      .summary { color: #666; font-size: 15px; line-height: 1.6; text-align: justify; margin-bottom: 15px; }\n      a.read-more { color: #0066FF !important; text-decoration: none !important; font-weight: 600; font-size: 14px; }\n      .list-item { padding: 15px 20px; border-bottom: 1px solid #f5f5f5; }\n      .list-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: #333; line-height: 1.4; }\n      .list-meta { font-size: 12px; color: #999; }\n      a.source-link { color: #0066FF !important; text-decoration: underline !important; }\n      .empty-state { padding: 60px 20px; text-align: center; color: #999; }\n      .footer { background: #fafafa; padding: 25px 20px; text-align: center; color: #999; font-size: 12px; border-top: 1px solid #eee; }\n    </style>\n    \"\"\"\n\n    html_content = f\"\"\"\n    <!DOCTYPE html>\n    <html>\n    <head>\n    <meta charset=\"utf-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <meta name=\"format-detection\" content=\"telephone=no, date=no, address=no, email=no, url=no\">\n    {css}\n    </head>\n    <body>\n    <div class=\"container\">\n      <div class=\"header\">\n        <h1>{greeting}，这是为您精选的<br>24小时\"{keyword_upper}\"资讯</h1>\n        <p class=\"header-date\"><span>{date_header_str}</span></p>\n      </div>\n    \"\"\"\n\n    top_news_list = data.get('top_news', []) or []\n    quick_news_list = data.get('quick_news', []) or []\n\n    if len(top_news_list) == 0 and len(quick_news_list) == 0:\n        html_content += \"\"\"\n        <div class=\"empty-state\">\n            <span style=\"font-size:48px;\">\U0001F4ED</span>\n            <div style=\"font-size:16px; color:#666; margin-top:15px;\">暂时没有检索到相关新闻</div>\n        </div>\n        \"\"\"\n    else:\n        if len(top_news_list) > 0:\n            html_content += '<div class=\"section-title\"><span>\U0001F525</span> 核心热点</div>'\n            for news in top_news_list:\n                source_display = news.get('source', '来源')\n                \n                raw_time = str(news.get('time', ''))\n                if len(raw_time) > 10 and '-' in raw_time:\n                    display_time = raw_time[5:]\n                else:\n                    display_time = raw_time\n\n                main_link = news.get('link', '#')\n                tag = news.get('tag', '热点')\n                \n                # 智能截断摘要\n                raw_summary = news.get('summary', '')\n                summary = smart_truncate_summary(raw_summary, max_length=120)\n\n                html_content += f\"\"\"\n                <div class=\"card\">\n                  <span class=\"tag\">{tag}</span>\n                  <div class=\"card-title\">{news.get('title')}</div>\n                  <div class=\"meta-line\">来源：{source_display} | {display_time}</div>\n                  <div class=\"summary\">{summary}</div>\n                  <a href=\"{main_link}\" class=\"read-more\">阅读原文 →</a>\n                </div>\n                \"\"\"\n\n        if len(quick_news_list) > 0:\n            html_content += '<div class=\"section-title\"><span>\U0001F4F0</span> 新闻速览</div>'\n            for news in quick_news_list:\n                source_display = news.get('source', '资讯')\n                main_link = news.get('link', '#')\n                raw_time = str(news.get('time', ''))\n                display_time = raw_time[5:] if len(raw_time) > 10 else raw_time\n\n                html_content += f\"\"\"\n                <div class=\"list-item\">\n                  <div class=\"list-title\">{news.get('title')}</div>\n                  <div class=\"list-meta\">来源：<a href=\"{main_link}\" class=\"source-link\">{source_display}</a> | {display_time}</div>\n                </div>\n                \"\"\"\n\n    html_content += \"\"\"\n      <div class=\"footer\">把握行业脉搏，洞察科技未来 | 明日继续为您提供精选情报</div>\n    </div>\n    </body>\n    </html>\n    \"\"\"\n    \n    return {\"final_html\": html_content}\n"
+        language: 3
+        node_inputs:
+            - name: llm_result_ai
+              input:
+                value:
+                    path: output
+                    ref_node: "1759387"
+            - name: keyword
+              input:
+                value:
+                    path: keyword
+                    ref_node: "100001"
+            - name: llm_result_tech
+              input:
+                value:
+                    path: output
+                    ref_node: "1701686"
+            - name: llm_result_finance
+              input:
+                value:
+                    path: output
+                    ref_node: "1584268"
+        node_outputs:
+            final_html:
+                type: string
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            switch: false
+            timeoutMs: 60000
+    - id: "1590686"
+      type: llm
+      title: AI资讯处理_1
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-LLM-v2.jpg
+      description: "调用大语言模型,使用变量和提示词生成回复"
+      version: "3"
+      position:
+        x: 2741.706161137441
+        y: -271.6929889943641
+      parameters:
+        fcParam:
+            llmNodeUID: ""
+            pluginFCParam: {}
+            spaceID: ""
+            workflowVersion: ""
+        fcParamVar:
+            knowledgeFCParam: {}
+        llmParam:
+            - name: generationDiversity
+              input:
+                type: string
+                value: default_val
+            - name: apiMode
+              input:
+                type: integer
+                value: "0"
+            - name: maxTokens
+              input:
+                type: integer
+                value: "32768"
+            - name: spCurrentTime
+              input:
+                type: boolean
+                value: false
+            - name: spAntiLeak
+              input:
+                type: boolean
+                value: false
+            - name: thinkingType
+              input:
+                type: string
+                value: disabled
+            - name: responseFormat
+              input:
+                type: integer
+                value: "2"
+            - name: modelName
+              input:
+                type: string
+                value: DeepSeek-V3.2
+            - name: modelType
+              input:
+                type: integer
+                value: "1764929611"
+            - name: parameters
+              input:
+                type: object
+                value: null
+            - name: prompt
+              input:
+                type: string
+                value: ""
+            - name: enableChatHistory
+              input:
+                type: boolean
+                value: false
+            - name: chatHistoryRound
+              input:
+                type: integer
+                value: "3"
+            - name: systemPrompt
+              input:
+                type: string
+                value: "# Role\n你是ai新闻编辑，负责筛选、排序和内容优化。\n\n# Input Data\n- 新闻列表：{{news_list}}\n- 当前时间：{{current_time}}\n- 用户关注主题：{{keyword}}\n\n---\n\n# 核心规则\n\n## 1. 语义去重\n判断哪些新闻是同一事件，合并后保留内容最丰富的版本。\n\n## 2. 相关性过滤\n删除与「{{keyword}}」不直接相关的新闻。\n\n## 3. 排序规则\n\n按**新闻价值**排序，思考：**读者最想先看到什么？**\n\n| 优先级 | 新闻类型 | 示例 |\n|--------|----------|------|\n| ⭐⭐⭐⭐⭐ | 行业格局变化/巨头对决 | 字节vs阿里AI战役 |\n| ⭐⭐⭐⭐⭐ | 重磅产品发布/开源 | OpenAI发布Prism |\n| ⭐⭐⭐⭐⭐ | 独家爆料/泄露 | Gemini 3.5泄露 |\n| ⭐⭐⭐⭐ | 头部企业重大动作 | 腾讯混元开源 |\n| ⭐⭐⭐⭐ | 话题性事件 | Clawdbot被迫改名 |\n| ⭐⭐⭐ | 实用工具更新 | Kimi Code |\n| ⭐⭐⭐ | 行业趋势/现象 | AI漫剧淘金热 |\n| ⭐⭐ | CEO/高管言论 | 奥特曼访谈 |\n| ⭐ | 未来规划 | 三星2026年AR眼镜 |\n\n**同一优先级内，按时间排序（越新越前）。**\n\n## 4. 来源显示规则\n- **只显示一个来源**（选择内容最丰富的那个）\n\n## 5. Tag 规则\n- 根据标题和摘要，提炼**具体领域**（2-6字）\n- 禁止使用\"AI\"、\"科技\"等宽泛词\n- 示例：AI科研、AI音乐、开源模型、AI编程、具身智能\n\n## 6. 摘要规则\n- **极简主义**：目标 **80-100 字**（LLM通常会写超，所以这里故意写低）。\n- **必须**以完整句子结尾。\n- **严格自检**：在输出前计算字数，若超过 120 字，必须删减修饰语、背景介绍，只保留核心事实。\n- 禁止编造。\n\n## 7. 数量控制\n\n| 有效新闻数 N | top_news | quick_news |\n|-------------|----------|------------|\n| N ≤ 10 | 全部 | 空数组 [] |\n| 11 ≤ N ≤ 20 | 7-8 条 | 剩余全部 |\n| N > 20 | 8 条 | 最多 10 条 |\n\n---\n\n# Output Format\n\n纯 JSON，禁止 Markdown。\n\n{\n    \"top_news\": [ \n        {\n            \"title\": \"精炼标题\",\n            \"tag\": \"具体领域标签\",\n            \"time\": \"YYYY-MM-DD HH:mm\", \n            \"summary\": \"100-120字摘要\",\n            \"source\": \"单个来源\",\n            \"link\": \"原文链接\"\n        }\n    ],\n    \"quick_news\": [\n        {\n            \"title\": \"标题\",\n            \"time\": \"YYYY-MM-DD HH:mm\",\n            \"source\": \"来源\",\n            \"link\": \"链接\"\n        }\n    ]\n}\n"
+            - name: stableSystemPrompt
+              input:
+                type: string
+                value: ""
+            - name: canContinue
+              input:
+                type: boolean
+                value: false
+            - name: loopPromptVersion
+              input:
+                type: string
+                value: ""
+            - name: loopPromptName
+              input:
+                type: string
+                value: ""
+            - name: loopPromptId
+              input:
+                type: string
+                value: ""
+        node_inputs:
+            - name: news_list
+              input:
+                value:
+                    path: result
+                    ref_node: "1433533"
+            - name: keyword
+              input:
+                value:
+                    path: keyword
+                    ref_node: "100001"
+            - name: current_time
+              input:
+                value:
+                    path: current_time
+                    ref_node: "1433533"
+        node_outputs:
+            output:
+                type: string
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            switch: false
+            timeoutMs: 180000
+edges:
+    - source_node: "125188"
+      target_node: "149495"
+    - source_node: "149495"
+      target_node: "900001"
+    - source_node: "100001"
+      target_node: "1326525"
+    - source_node: "1759387"
+      target_node: "1840736"
+    - source_node: "1701686"
+      target_node: "1840736"
+    - source_node: "1584268"
+      target_node: "1840736"
+    - source_node: "1840736"
+      target_node: "118321"
+    - source_node: "118321"
+      target_node: "125188"
+    - source_node: "1326525"
+      target_node: "1735296"
+    - source_node: "155140"
+      target_node: "1759387"
+      source_port: "true"
+    - source_node: "155140"
+      target_node: "1701686"
+      source_port: "false"
+    - source_node: "1433533"
+      target_node: "155140"
+    - source_node: "1735296"
+      target_node: "1401402"
+      source_port: "false"
+    - source_node: "1401402"
+      target_node: "1584268"
+    - source_node: "1735296"
+      target_node: "1433533"
+      source_port: "true"

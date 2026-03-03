@@ -1,0 +1,942 @@
+schema_version: 1.0.0
+name: send_mail_cache_using
+id: 7605945911643471907
+description: "发送缓存邮件（现役）"
+mode: workflow
+icon: plugin_icon/workflow.png
+nodes:
+    - id: "100001"
+      type: start
+      title: 开始
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Start-v2.jpg
+      description: "工作流的起始节点，用于设定启动工作流需要的信息"
+      position:
+        x: 180
+        y: 279.625
+      parameters:
+        node_outputs:
+            input_email:
+                type: string
+                value: null
+            input_keyword:
+                type: string
+                value: null
+            input_user_id:
+                type: string
+                required: true
+                value: null
+    - id: "900001"
+      type: end
+      title: 结束
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-End-v2.jpg
+      description: "工作流的最终节点，用于返回工作流运行后的结果信息"
+      position:
+        x: 6160
+        y: 211.29999999999998
+      parameters:
+        content:
+            type: string
+            value:
+                content: '{{output1}}{{output2}}{{output3}}'
+                type: literal
+        node_inputs:
+            - name: output1
+              input:
+                type: string
+                value:
+                    path: output
+                    ref_node: "173705"
+            - name: output2
+              input:
+                type: string
+                value:
+                    path: output
+                    ref_node: "1519541"
+            - name: output3
+              input:
+                type: string
+                value:
+                    path: output
+                    ref_node: "1450445"
+        streamingOutput: true
+        terminatePlan: useAnswerContent
+    - id: "1581884"
+      type: http
+      title: 查询缓存
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-HTTP.png
+      description: "用于发送API请求，从接口返回数据"
+      position:
+        x: 3400
+        y: 465.92500000000007
+      parameters:
+        apiInfo:
+            method: POST
+            url: https://ebvstftlpvvyzdzjshqa.supabase.co/rest/v1/rpc/get_latest_daily_news_html
+        auth:
+            authData:
+                customData:
+                    addTo: header
+            authOpen: false
+            authType: BEARER_AUTH
+        body:
+            bodyData:
+                binary:
+                    fileURL:
+                        type: string
+                        value:
+                            content:
+                                blockID: ""
+                                name: ""
+                                source: block-output
+                            rawMeta:
+                                type: 1
+                            type: ref
+                rawText: |
+                    {
+                      "p_keyword": "{{block_output_100001.input_keyword}}",
+                      "p_max_age_hours": 24
+                    }
+            bodyType: RAW_TEXT
+        headers:
+            - name: apikey
+              input:
+                type: string
+                value: "<REDACTED>"
+            - name: Authorization
+              input:
+                type: string
+                value: "Bearer <REDACTED>"
+            - name: Content-Type
+              input:
+                type: string
+                value: "application/json"
+        node_outputs:
+            body:
+                type: string
+                value: null
+            headers:
+                type: string
+                value: null
+            statusCode:
+                type: integer
+                value: null
+        params: []
+        setting:
+            retryTimes: 0
+            timeout: 30
+        settingOnError:
+            dataOnErr: |-
+                {
+                    "body": "",
+                    "statusCode": 0,
+                    "headers": ""
+                }
+            switch: false
+    - id: "197637"
+      type: condition
+      title: 选择器_1
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Condition-v2.jpg
+      description: "连接多个下游分支，若设定的条件成立则仅运行对应的分支，若均不成立则只运行“否则”分支"
+      position:
+        x: 3860
+        y: 465.225
+      parameters:
+        branches:
+            - condition:
+                conditions:
+                    - left:
+                        input:
+                            value:
+                                path: body
+                                ref_node: "1581884"
+                      operator: 1
+                      right:
+                        input:
+                            type: string
+                            value: "[]"
+                logic: 2
+    - id: "1697697"
+      type: output
+      title: 输出_2
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Output-v2.jpg
+      description: "节点从“消息”更名为“输出”，支持中间过程的消息输出，支持流式和非流式两种方式"
+      position:
+        x: 4320
+        y: 372.27500000000003
+      parameters:
+        callTransferVoice: true
+        chatHistoryWriting: historyWrite
+        content:
+            type: string
+            value:
+                content: 邮件正在发送中，请稍等一分钟~
+                type: literal
+        streamingOutput: true
+    - id: "189485"
+      type: subflow
+      title: generate_send_all_using
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Workflow-v2.jpg
+      description: "生成并所有主题新闻（现役）"
+      position:
+        x: 4780
+        y: 372.27500000000003
+      parameters:
+        inputDefs:
+            - input: {}
+              name: keyword
+              required: true
+              type: string
+            - input: {}
+              name: mail
+              required: true
+              type: string
+        node_inputs:
+            - name: keyword
+              input:
+                value:
+                    path: input_keyword
+                    ref_node: "100001"
+            - name: mail
+              input:
+                type: string
+                value:
+                    path: final_email
+                    ref_node: "191016"
+        node_outputs:
+            output:
+                type: string
+                value: null
+        settingOnError: {}
+        spaceId: "7486797337982140435"
+        type: 1
+        workflowId: "7600837645149044755"
+        workflowVersion: v0.0.8
+    - id: "1554646"
+      type: plugin
+      title: sendMail_1
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Plugin-v2.jpg
+      description: "发送邮件"
+      position:
+        x: 4780
+        y: 583.575
+      parameters:
+        apiParam:
+            - name: apiID
+              input:
+                type: string
+                value: "7385456907873517618"
+            - name: apiName
+              input:
+                type: string
+                value: "sendMail"
+            - name: pluginID
+              input:
+                type: string
+                value: "7385456907873501234"
+            - name: pluginName
+              input:
+                type: string
+                value: "邮件管理"
+            - name: pluginVersion
+              input:
+                type: string
+                value: ""
+            - name: tips
+              input:
+                type: string
+                value: ""
+            - name: outDocLink
+              input:
+                type: string
+                value: ""
+        node_inputs:
+            - name: account
+              input:
+                type: string
+                value: "demo@example.com"
+            - name: password
+              input:
+                type: string
+                value: "fmyvepozxmpnbfid"
+            - name: subject
+              input:
+                type: string
+                value: "24小时热点资讯推送"
+            - name: text
+              input:
+                type: string
+                value:
+                    path: clean_html
+                    ref_node: "1675660"
+            - name: to
+              input:
+                type: string
+                value:
+                    path: final_email
+                    ref_node: "191016"
+            - name: html
+              input:
+                type: string
+                value:
+                    path: clean_html
+                    ref_node: "1675660"
+        node_outputs:
+            message:
+                type: string
+                required: true
+                value: null
+                description: 执行的结果
+            success:
+                type: boolean
+                required: true
+                value: null
+                description: 是否发送成功
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            timeoutMs: 180000
+    - id: "1675660"
+      type: code
+      title: 清理格式&固定时间
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Code-v2.jpg
+      description: "编写代码，处理输入变量来生成返回值"
+      version: v2
+      position:
+        x: 4320
+        y: 583.575
+      parameters:
+        code: |
+            import json
+            import re
+
+            async def main(args) -> dict:
+                # 正确取值路径！
+                s = args.params['input_json']
+
+                # 1) json.loads 解析
+                html = ""
+                try:
+                    d = json.loads(s)
+                    if isinstance(d, list) and d:
+                        html = d[0].get("html_content", "") or ""
+                    elif isinstance(d, dict):
+                        html = d.get("html_content", "") or ""
+                except:
+                    pass
+
+                # 2) 兜底：直接截 HTML
+                if not html:
+                    i = s.find("<!DOCTYPE html>")
+                    if i != -1:
+                        j = s.rfind("</html>")
+                        if j != -1:
+                            html = s[i:j + len("</html>")]
+
+                # 3) 清洗转义 + 时间改 08:00
+                if html:
+                    html = (html
+                        .replace('\\"', '"')
+                        .replace('\\n', '\n')
+                        .replace('\\/', '/')
+                        .replace('\\\\', '\\')
+                    )
+                    html = re.sub(r"(\d{2}:\d{2})(?=\s*星期)", "08:00", html)
+
+                    # 4) 标题文案替换（保留主题关键词）
+                    # Match examples:
+                    # - 这是为您精选的<br>24小时“AI”资讯
+                    # - 这是为您精选的24小时"AI"资讯
+                    title_pattern = r"这是为您精选的(?:\s*<br\s*/?>\s*)?24小时\s*[\u201C\u201D\"\uFF02](.*?)[\u201C\u201D\"\uFF02]\s*资讯"
+                    html = re.sub(
+                        title_pattern,
+                        r"这是为您测试专用的“\1”资讯简报",
+                        html,
+                        count=1,
+                    )
+
+                return {
+                    "clean_html": html
+                }
+        language: 3
+        node_inputs:
+            - name: input_json
+              input:
+                value:
+                    path: body
+                    ref_node: "1581884"
+        node_outputs:
+            clean_html:
+                type: string
+                value: null
+            debug_attrs:
+                type: string
+                value: null
+            debug_vars:
+                type: string
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            switch: false
+            timeoutMs: 60000
+    - id: "1355139"
+      type: http
+      title: 查询邮箱
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-HTTP.png
+      description: "用于发送API请求，从接口返回数据"
+      position:
+        x: 640
+        y: 254.62499999999997
+      parameters:
+        apiInfo:
+            method: POST
+            url: https://ebvstftlpvvyzdzjshqa.supabase.co/rest/v1/rpc/get_user_email
+        auth:
+            authData:
+                customData:
+                    addTo: header
+            authOpen: false
+            authType: BEARER_AUTH
+        body:
+            bodyData:
+                binary:
+                    fileURL:
+                        type: string
+                        value:
+                            content:
+                                blockID: ""
+                                name: ""
+                                source: block-output
+                            rawMeta:
+                                type: 1
+                            type: ref
+                rawText: |
+                    {"p_user_id": "{{block_output_100001.input_user_id}}"}
+            bodyType: RAW_TEXT
+        headers:
+            - name: apikey
+              input:
+                type: string
+                value: "<REDACTED>"
+            - name: Content-Type
+              input:
+                type: string
+                value: "application/json"
+        node_outputs:
+            body:
+                type: string
+                value: null
+            headers:
+                type: string
+                value: null
+            statusCode:
+                type: integer
+                value: null
+        params: []
+        setting:
+            retryTimes: 0
+            timeout: 30
+        settingOnError:
+            dataOnErr: |-
+                {
+                    "body": "",
+                    "statusCode": 0,
+                    "headers": ""
+                }
+            switch: false
+    - id: "191016"
+      type: code
+      title: pick email
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Code-v2.jpg
+      description: "编写代码，处理输入变量来生成返回值"
+      version: v2
+      position:
+        x: 1100
+        y: 266.625
+      parameters:
+        code: |
+            import json
+
+            async def main(args) -> dict:
+                to_email = args.params.get("to_email", "").strip()
+                queried = args.params.get("queried", "")
+
+                # 1. 用户给了邮箱，直接用
+                if to_email:
+                    return {"final_email": to_email, "status": "ok"}
+
+                # 2. 没给，从查询结果里提取
+                data = queried
+                if isinstance(data, str):
+                    try:
+                        data = json.loads(data)
+                    except:
+                        data = []
+
+                if isinstance(data, list) and len(data) > 0:
+                    email = data[0].get("email", "")
+                    if email:
+                        return {"final_email": email, "status": "ok"}
+
+                # 3. 都没有
+                return {"final_email": "", "status": "no_email"}
+        language: 3
+        node_inputs:
+            - name: to_email
+              input:
+                value:
+                    path: input_email
+                    ref_node: "100001"
+            - name: queried
+              input:
+                value:
+                    path: body
+                    ref_node: "1355139"
+        node_outputs:
+            final_email:
+                type: string
+                value: null
+            status:
+                type: string
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            timeoutMs: 60000
+    - id: "159428"
+      type: condition
+      title: 选择器
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Condition-v2.jpg
+      description: "连接多个下游分支，若设定的条件成立则仅运行对应的分支，若均不成立则只运行“否则”分支"
+      position:
+        x: 1560
+        y: 253.92499999999998
+      parameters:
+        branches:
+            - condition:
+                conditions:
+                    - left:
+                        input:
+                            value:
+                                path: status
+                                ref_node: "191016"
+                      operator: 1
+                      right:
+                        input:
+                            type: string
+                            value: "no_email"
+                logic: 2
+    - id: "1570729"
+      type: http
+      title: 查询次数
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-HTTP.png
+      description: "用于发送API请求，从接口返回数据"
+      position:
+        x: 2020
+        y: 360.275
+      parameters:
+        apiInfo:
+            method: POST
+            url: https://ebvstftlpvvyzdzjshqa.supabase.co/rest/v1/rpc/check_send_count
+        auth:
+            authData:
+                customData:
+                    addTo: header
+            authOpen: false
+            authType: BEARER_AUTH
+        body:
+            bodyData:
+                binary:
+                    fileURL:
+                        type: string
+                        value:
+                            content:
+                                blockID: ""
+                                name: ""
+                                source: block-output
+                            rawMeta:
+                                type: 1
+                            type: ref
+                rawText: |
+                    {"p_user_id": "{{block_output_100001.input_user_id}}", "p_limit": 99}
+            bodyType: RAW_TEXT
+        headers:
+            - name: apikey
+              input:
+                type: string
+                value: "<REDACTED>"
+            - name: Content-Type
+              input:
+                type: string
+                value: "application/json"
+        node_outputs:
+            body:
+                type: string
+                value: null
+            headers:
+                type: string
+                value: null
+            statusCode:
+                type: integer
+                value: null
+        params: []
+        setting:
+            retryTimes: 0
+            timeout: 30
+        settingOnError:
+            dataOnErr: |-
+                {
+                    "body": "",
+                    "statusCode": 0,
+                    "headers": ""
+                }
+            switch: false
+    - id: "131669"
+      type: code
+      title: Parse_Limit
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Code-v2.jpg
+      description: "编写代码，处理输入变量来生成返回值"
+      version: v2
+      position:
+        x: 2480
+        y: 372.27500000000003
+      parameters:
+        code: |
+            import json
+
+            async def main(args) -> dict:
+                raw = args.params.get("limit_body", "")
+
+                data = raw
+                if isinstance(data, str):
+                    try:
+                        data = json.loads(data)
+                    except:
+                        data = []
+
+                if isinstance(data, list) and len(data) > 0:
+                    val = data[0].get("allowed")
+                    count = data[0].get("current_count", 0)
+
+                    if val is True or str(val).lower() == "true":
+                        # 当前这次还没算进去，所以剩余 = 限制 - 已发 - 1(本次)
+                        left = 99 - count - 1
+                        if left < 0:
+                            left = 0
+                        return {"allowed": "yes", "remaining": str(left)}
+
+                return {"allowed": "no", "remaining": "0"}
+        language: 3
+        node_inputs:
+            - name: limit_body
+              input:
+                value:
+                    path: body
+                    ref_node: "1570729"
+        node_outputs:
+            allowed:
+                type: string
+                value: null
+            remaining:
+                type: string
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            timeoutMs: 60000
+    - id: "1557277"
+      type: condition
+      title: 选择器_2
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Condition-v2.jpg
+      description: "连接多个下游分支，若设定的条件成立则仅运行对应的分支，若均不成立则只运行“否则”分支"
+      position:
+        x: 2940
+        y: 359.57500000000005
+      parameters:
+        branches:
+            - condition:
+                conditions:
+                    - left:
+                        input:
+                            value:
+                                path: allowed
+                                ref_node: "131669"
+                      operator: 1
+                      right:
+                        input:
+                            type: string
+                            value: "no"
+                logic: 2
+    - id: "173705"
+      type: text
+      title: 文本处理
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-StrConcat-v2.jpg
+      description: "用于处理多个字符串类型变量的格式"
+      position:
+        x: 5700
+        y: -2.1316282072803006e-14
+      parameters:
+        concatParams:
+            - name: concatResult
+              input:
+                type: string
+                value: "未找到您的邮箱，请提供邮箱地址。"
+            - name: arrayItemConcatChar
+              input:
+                type: string
+                value: "，"
+            - name: allArrayItemConcatChars
+              input:
+                type: list
+                items:
+                    type: object
+                    value: null
+                value:
+                    - isDefault: true
+                      label: "换行"
+                      value: "\n"
+                    - isDefault: true
+                      label: "制表符"
+                      value: "\t"
+                    - isDefault: true
+                      label: "句号"
+                      value: "。"
+                    - isDefault: true
+                      label: "逗号"
+                      value: "，"
+                    - isDefault: true
+                      label: "分号"
+                      value: "；"
+                    - isDefault: true
+                      label: "空格"
+                      value: " "
+        method: concat
+        node_outputs:
+            output:
+                type: string
+                required: true
+                value: null
+    - id: "1519541"
+      type: text
+      title: 文本处理_2
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-StrConcat-v2.jpg
+      description: "用于处理多个字符串类型变量的格式"
+      position:
+        x: 5700
+        y: 211.29999999999998
+      parameters:
+        concatParams:
+            - name: concatResult
+              input:
+                type: string
+                value: "24小时内发送次数已达上限（3/3）"
+            - name: arrayItemConcatChar
+              input:
+                type: string
+                value: "，"
+            - name: allArrayItemConcatChars
+              input:
+                type: list
+                items:
+                    type: object
+                    value: null
+                value:
+                    - isDefault: true
+                      label: "换行"
+                      value: "\n"
+                    - isDefault: true
+                      label: "制表符"
+                      value: "\t"
+                    - isDefault: true
+                      label: "句号"
+                      value: "。"
+                    - isDefault: true
+                      label: "逗号"
+                      value: "，"
+                    - isDefault: true
+                      label: "分号"
+                      value: "；"
+                    - isDefault: true
+                      label: "空格"
+                      value: " "
+        method: concat
+        node_outputs:
+            output:
+                type: string
+                required: true
+                value: null
+    - id: "1450445"
+      type: text
+      title: 文本处理_3
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-StrConcat-v2.jpg
+      description: "用于处理多个字符串类型变量的格式"
+      position:
+        x: 5700
+        y: 477.92500000000007
+      parameters:
+        concatParams:
+            - name: concatResult
+              input:
+                type: string
+                value: "邮件发送成功，今日剩余发送次数：{{String1}} 次"
+            - name: arrayItemConcatChar
+              input:
+                type: string
+                value: "，"
+            - name: allArrayItemConcatChars
+              input:
+                type: list
+                items:
+                    type: object
+                    value: null
+                value:
+                    - isDefault: true
+                      label: "换行"
+                      value: "\n"
+                    - isDefault: true
+                      label: "制表符"
+                      value: "\t"
+                    - isDefault: true
+                      label: "句号"
+                      value: "。"
+                    - isDefault: true
+                      label: "逗号"
+                      value: "，"
+                    - isDefault: true
+                      label: "分号"
+                      value: "；"
+                    - isDefault: true
+                      label: "空格"
+                      value: " "
+        method: concat
+        node_inputs:
+            - name: String1
+              input:
+                value:
+                    path: remaining
+                    ref_node: "131669"
+        node_outputs:
+            output:
+                type: string
+                required: true
+                value: null
+    - id: "1015913"
+      type: http
+      title: 查询缓存_1
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-HTTP.png
+      description: "用于发送API请求，从接口返回数据"
+      position:
+        x: 5240
+        y: 465.92500000000007
+      parameters:
+        apiInfo:
+            method: POST
+            url: https://ebvstftlpvvyzdzjshqa.supabase.co/rest/v1/rpc/log_email_send
+        auth:
+            authData:
+                customData:
+                    addTo: header
+            authOpen: false
+            authType: BEARER_AUTH
+        body:
+            bodyData:
+                binary:
+                    fileURL:
+                        type: string
+                        value:
+                            content:
+                                blockID: ""
+                                name: ""
+                                source: block-output
+                            rawMeta:
+                                type: 1
+                            type: ref
+                rawText: |
+                    {
+                      "p_user_id": "{{block_output_100001.input_user_id}}",
+                      "p_email": "{{block_output_191016.final_email}}",
+                      "p_keyword": "{{block_output_100001.input_keyword}}"
+                    }
+            bodyType: RAW_TEXT
+        headers:
+            - name: apikey
+              input:
+                type: string
+                value: "<REDACTED>"
+            - name: Authorization
+              input:
+                type: string
+                value: "Bearer <REDACTED>"
+            - name: Content-Type
+              input:
+                type: string
+                value: "application/json"
+        node_outputs:
+            body:
+                type: string
+                value: null
+            headers:
+                type: string
+                value: null
+            statusCode:
+                type: integer
+                value: null
+        params: []
+        setting:
+            retryTimes: 0
+            timeout: 30
+        settingOnError:
+            dataOnErr: |-
+                {
+                    "body": "",
+                    "statusCode": 0,
+                    "headers": ""
+                }
+            switch: false
+edges:
+    - source_node: "100001"
+      target_node: "1355139"
+    - source_node: "173705"
+      target_node: "900001"
+    - source_node: "1519541"
+      target_node: "900001"
+    - source_node: "1450445"
+      target_node: "900001"
+    - source_node: "1557277"
+      target_node: "1581884"
+      source_port: "false"
+    - source_node: "1581884"
+      target_node: "197637"
+    - source_node: "197637"
+      target_node: "1697697"
+      source_port: "true"
+    - source_node: "197637"
+      target_node: "1675660"
+      source_port: "false"
+    - source_node: "1697697"
+      target_node: "189485"
+    - source_node: "189485"
+      target_node: "1015913"
+    - source_node: "1675660"
+      target_node: "1554646"
+    - source_node: "1554646"
+      target_node: "1015913"
+    - source_node: "1355139"
+      target_node: "191016"
+    - source_node: "191016"
+      target_node: "159428"
+    - source_node: "159428"
+      target_node: "173705"
+      source_port: "true"
+    - source_node: "159428"
+      target_node: "1570729"
+      source_port: "false"
+    - source_node: "1570729"
+      target_node: "131669"
+    - source_node: "131669"
+      target_node: "1557277"
+    - source_node: "1557277"
+      target_node: "1519541"
+      source_port: "true"
+    - source_node: "1015913"
+      target_node: "1450445"

@@ -1,0 +1,168 @@
+{
+  "suite": {
+    "name": "send_mail_cache_using",
+    "version": "v2-2026-02-13",
+    "workflow_id": "7605945911643471907",
+    "notes": [
+      "Targets send_mail_cache_using workflow with email lookup + rate-limit + cache/generate paths.",
+      "Uses a real deliverable email for sendMail plugin validation.",
+      "SM-02 depends on SM-01 (same user_id) to verify remaining decrement.",
+      "SM-05 validates no-cache->generate path once to control token cost.",
+      "Skip rate-limit exhaustion path intentionally (requires too many sends)."
+    ]
+  },
+  "cases": [
+    {
+      "id": "SM-01",
+      "intent": "缓存发送",
+      "scenario": "给定邮箱+ai主题，命中缓存并发送成功",
+      "dimension": "D3_缓存路径",
+      "inputs": {
+        "input_email": "$REAL_EMAIL",
+        "input_keyword": "ai",
+        "input_user_id": "$SM01_USER_ID"
+      },
+      "expected": {
+        "allowed": true,
+        "any_contains": [
+          "发送成功",
+          "剩余"
+        ],
+        "remaining_present": true
+      }
+    },
+    {
+      "id": "SM-02",
+      "intent": "连续发送",
+      "scenario": "同一user_id再次发送，剩余次数应递减",
+      "dimension": "D2_次数限制",
+      "inputs": {
+        "input_email": "$REAL_EMAIL",
+        "input_keyword": "ai",
+        "input_user_id": "$SM01_USER_ID"
+      },
+      "expected": {
+        "allowed": true,
+        "any_contains": [
+          "发送成功",
+          "剩余"
+        ],
+        "remaining_present": true,
+        "remaining_less_than_case": "SM-01"
+      }
+    },
+    {
+      "id": "SM-03",
+      "intent": "订阅补全邮箱",
+      "scenario": "空邮箱+已订阅user_id=111，自动查邮箱并发送",
+      "dimension": "D1_邮箱解析",
+      "inputs": {
+        "input_email": "",
+        "input_keyword": "ai",
+        "input_user_id": "$SUBSCRIBED_USER_ID"
+      },
+      "expected": {
+        "allowed": true,
+        "any_contains": [
+          "发送成功",
+          "剩余"
+        ],
+        "remaining_present": true
+      }
+    },
+    {
+      "id": "SM-04",
+      "intent": "未订阅无邮箱拦截",
+      "scenario": "空邮箱+未订阅user_id，提示用户提供邮箱",
+      "dimension": "D1_邮箱解析",
+      "inputs": {
+        "input_email": "",
+        "input_keyword": "ai",
+        "input_user_id": "$UNSUBSCRIBED_USER_ID"
+      },
+      "expected": {
+        "allowed": false,
+        "any_contains": [
+          "未找到您的邮箱",
+          "提供邮箱"
+        ]
+      }
+    },
+    {
+      "id": "SM-05",
+      "intent": "无缓存走生成",
+      "scenario": "给定无缓存keyword，走生成子流程并发送成功",
+      "dimension": "D3_生成路径",
+      "inputs": {
+        "input_email": "$REAL_EMAIL",
+        "input_keyword": "$NO_CACHE_KEYWORD",
+        "input_user_id": "$SM05_USER_ID"
+      },
+      "expected": {
+        "allowed": true,
+        "any_contains": [
+          "发送成功",
+          "剩余"
+        ],
+        "remaining_present": true
+      }
+    },
+    {
+      "id": "SM-06",
+      "intent": "邮箱空格处理",
+      "scenario": "邮箱带前后空格，仍可发送成功",
+      "dimension": "D1_邮箱解析",
+      "inputs": {
+        "input_email": "  $REAL_EMAIL  ",
+        "input_keyword": "ai",
+        "input_user_id": "$SM06_USER_ID"
+      },
+      "expected": {
+        "allowed": true,
+        "any_contains": [
+          "发送成功",
+          "剩余"
+        ],
+        "remaining_present": true
+      }
+    },
+    {
+      "id": "SM-07",
+      "intent": "给邮箱优先",
+      "scenario": "未订阅user_id但显式提供邮箱，应直接发送成功",
+      "dimension": "D1_邮箱解析",
+      "inputs": {
+        "input_email": "$REAL_EMAIL",
+        "input_keyword": "ai",
+        "input_user_id": "$UNSUBSCRIBED_USER_ID_2"
+      },
+      "expected": {
+        "allowed": true,
+        "any_contains": [
+          "发送成功",
+          "剩余"
+        ],
+        "remaining_present": true
+      }
+    },
+    {
+      "id": "SM-08",
+      "intent": "关键词归一化",
+      "scenario": "关键词人工智能归一化到ai后发送成功",
+      "dimension": "D3_缓存路径",
+      "inputs": {
+        "input_email": "$REAL_EMAIL",
+        "input_keyword": "人工智能",
+        "input_user_id": "$SM08_USER_ID"
+      },
+      "expected": {
+        "allowed": true,
+        "any_contains": [
+          "发送成功",
+          "剩余"
+        ],
+        "remaining_present": true
+      }
+    }
+  ]
+}

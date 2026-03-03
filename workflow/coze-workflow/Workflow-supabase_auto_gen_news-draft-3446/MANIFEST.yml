@@ -1,0 +1,11 @@
+type: Workflow
+version: 1.0.0
+main:
+    id: 7602200039352975370
+    name: supabase_auto_gen_news
+    desc: 自动生成新闻日报到supabase
+    icon: plugin_icon/workflow.png
+    version: ""
+    flowMode: 0
+    commitId: ""
+sub: []

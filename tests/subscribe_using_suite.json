@@ -1,0 +1,405 @@
+{
+  "suite": {
+    "name": "subscribe_using",
+    "version": "2026-02-06",
+    "workflow_id": "7599988261473927214",
+    "notes": [
+      "This suite calls Coze workflow API directly.",
+      "It uses randomized user_id/email per run to avoid colliding with real users.",
+      "Assertions are intentionally tolerant (substring/regex) because text may vary.",
+      "This suite includes both happy-path and boundary/negative tests for topic validation."
+    ]
+  },
+  "cases": [
+    {
+      "id": "R-01",
+      "name": "Invalid action falls back",
+      "name_zh": "无效操作兜底",
+      "purpose": "当 action 不匹配任何分支时，应该返回可用操作提示。",
+      "steps": [
+        {
+          "action": "未知操作",
+          "expect": {
+            "non_empty": true,
+            "any_contains": [
+              "查询",
+              "修改",
+              "取消"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "UQ-01",
+      "name": "Create subscription then query (happy path)",
+      "name_zh": "创建订阅后查询（正向）",
+      "purpose": "验证首次订阅创建成功，且查询能返回邮箱/主题/状态等核心字段。",
+      "steps": [
+        {
+          "action": "修改订阅",
+          "new_email": "{{email}}",
+          "new_keyword": "AI",
+          "expect": {
+            "non_empty": true,
+            "any_contains": [
+              "成功"
+            ],
+            "none_contains": [
+              "数据解析错误",
+              "失败",
+              "错误",
+              "Exception",
+              "Traceback"
+            ]
+          }
+        },
+        {
+          "action": "查询订阅",
+          "expect": {
+            "non_empty": true,
+            "must_contain_vars": [
+              "email",
+              "keyword"
+            ],
+            "must_have_fields": [
+              "邮箱",
+              "主题",
+              "状态"
+            ],
+            "any_contains": [
+              "当前订阅信息",
+              "邮箱",
+              "主题"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "U-NEG-01",
+      "name": "Create subscription without email should fail with prompt",
+      "name_zh": "首次订阅缺少邮箱提示",
+      "purpose": "验证首次订阅时缺少邮箱会给出明确提示，不应创建订阅。",
+      "steps": [
+        {
+          "action": "修改订阅",
+          "new_keyword": "AI",
+          "expect": {
+            "non_empty": true,
+            "any_contains": [
+              "邮箱",
+              "请提供邮箱",
+              "提供邮箱"
+            ],
+            "none_contains": [
+              "Exception",
+              "Traceback"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "U-02",
+      "name": "Update email only then query",
+      "name_zh": "更新邮箱后查询",
+      "purpose": "验证更新邮箱后，查询结果展示的新邮箱生效。",
+      "steps": [
+        {
+          "action": "修改订阅",
+          "new_email": "{{email}}",
+          "new_keyword": "AI",
+          "expect": { "non_empty": true }
+        },
+        {
+          "action": "修改订阅",
+          "new_email": "{{email2}}",
+          "expect": { "non_empty": true }
+        },
+        {
+          "action": "查询订阅",
+          "expect": {
+            "non_empty": true,
+            "must_contain_vars": ["email2"],
+            "must_have_fields": [
+              "邮箱",
+              "主题",
+              "状态"
+            ],
+            "any_contains": ["邮箱"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "U-03",
+      "name": "Update keyword only then query",
+      "name_zh": "更新主题后查询",
+      "purpose": "验证只更新主题后，查询结果展示的新主题生效。",
+      "steps": [
+        {
+          "action": "修改订阅",
+          "new_email": "{{email}}",
+          "new_keyword": "AI",
+          "expect": { "non_empty": true }
+        },
+        {
+          "action": "修改订阅",
+          "new_keyword": "财经",
+          "expect": { "non_empty": true }
+        },
+        {
+          "action": "查询订阅",
+          "expect": {
+            "non_empty": true,
+            "any_contains": ["财经"],
+            "must_have_fields": [
+              "邮箱",
+              "主题",
+              "状态"
+            ],
+            "any_contains_all": ["邮箱", "主题"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "D-01",
+      "name": "Unsubscribe after create; query indicates inactive or not found",
+      "name_zh": "取消订阅后查询状态",
+      "purpose": "验证取消订阅后，查询状态应变为已暂停/取消，且不应报错。",
+      "steps": [
+        {
+          "action": "修改订阅",
+          "new_email": "{{email}}",
+          "new_keyword": "AI",
+          "expect": { "non_empty": true }
+        },
+        {
+          "action": "取消订阅",
+          "expect": { "non_empty": true }
+        },
+        {
+          "action": "查询订阅",
+          "expect": {
+            "non_empty": true,
+            "must_have_fields": [
+              "邮箱",
+              "主题",
+              "状态"
+            ],
+            "any_contains": [
+              "未找到",
+              "取消",
+              "⏸️",
+              "inactive",
+              "已暂停"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "D-02",
+      "name": "Unsubscribe non-existent user is idempotent-ish",
+      "name_zh": "取消不存在订阅（幂等）",
+      "purpose": "验证无订阅时取消不会异常，返回友好提示。",
+      "steps": [
+        {
+          "action": "取消订阅",
+          "expect": {
+            "non_empty": true,
+            "none_contains": ["Traceback", "Exception"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q-02",
+      "name": "Query non-existent user returns not found",
+      "name_zh": "查询不存在订阅",
+      "purpose": "验证无订阅记录时查询返回未找到提示。",
+      "steps": [
+        {
+          "action": "查询订阅",
+          "expect": {
+            "non_empty": true,
+            "any_contains": ["未找到", "没有", "无"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "R-03",
+      "name": "Action with trailing spaces should not match strict router",
+      "name_zh": "action 尾部空格兜底",
+      "purpose": "验证 action 严格匹配；尾部空格应进入兜底分支。",
+      "steps": [
+        {
+          "action": "修改订阅 ",
+          "new_email": "{{email}}",
+          "new_keyword": "AI",
+          "expect": {
+            "non_empty": true,
+            "any_contains": [
+              "查询",
+              "修改",
+              "取消"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "U-05",
+      "name": "Create subscription with Tech topic then query",
+      "name_zh": "订阅科技主题",
+      "purpose": "验证允许主题之一：科技。",
+      "steps": [
+        {
+          "action": "修改订阅",
+          "new_email": "{{email}}",
+          "new_keyword": "科技",
+          "expect": {
+            "non_empty": true,
+            "any_contains": ["成功"],
+            "none_contains": ["失败", "错误", "Exception", "Traceback"]
+          }
+        },
+        {
+          "action": "查询订阅",
+          "expect": {
+            "non_empty": true,
+            "any_contains": ["科技"],
+            "must_have_fields": ["邮箱", "主题", "状态"],
+            "any_contains_all": ["邮箱", "主题"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "U-06",
+      "name": "Create subscription with Finance topic then query",
+      "name_zh": "订阅财经主题",
+      "purpose": "验证允许主题之一：财经。",
+      "steps": [
+        {
+          "action": "修改订阅",
+          "new_email": "{{email}}",
+          "new_keyword": "财经",
+          "expect": {
+            "non_empty": true,
+            "any_contains": ["成功"],
+            "none_contains": ["失败", "错误", "Exception", "Traceback"]
+          }
+        },
+        {
+          "action": "查询订阅",
+          "expect": {
+            "non_empty": true,
+            "any_contains": ["财经"],
+            "must_have_fields": ["邮箱", "主题", "状态"],
+            "any_contains_all": ["邮箱", "主题"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "U-04",
+      "name": "Lowercase topic normalization (ai -> AI)",
+      "name_zh": "小写主题归一化",
+      "purpose": "边界测试：用户输入 ai（小写）时，应归一化为 AI 并正确展示。",
+      "steps": [
+        {
+          "action": "修改订阅",
+          "new_email": "{{email}}",
+          "new_keyword": "ai",
+          "expect": {
+            "non_empty": true,
+            "none_contains": ["失败", "错误", "Exception", "Traceback"]
+          }
+        },
+        {
+          "action": "查询订阅",
+          "expect": {
+            "non_empty": true,
+            "any_contains": ["AI"],
+            "must_have_fields": ["邮箱", "主题", "状态"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "U-NEG-02",
+      "name": "Unsupported topic should be rejected",
+      "name_zh": "不支持主题提示",
+      "purpose": "异常测试：输入非 AI/科技/财经 的主题时，应提示不支持且不应创建订阅。",
+      "steps": [
+        {
+          "action": "修改订阅",
+          "new_email": "{{email}}",
+          "new_keyword": "体育",
+          "expect": {
+            "non_empty": true,
+            "any_contains": ["不支持", "仅支持", "只支持"],
+            "none_contains": ["创建成功", "更新成功", "Exception", "Traceback"]
+          }
+        },
+        {
+          "action": "查询订阅",
+          "expect": {
+            "non_empty": true,
+            "any_contains": ["未找到", "未找到相关的订阅记录"],
+            "none_contains": ["体育"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "D-03",
+      "name": "Unsubscribe then re-subscribe",
+      "name_zh": "取消后重新订阅",
+      "purpose": "验证取消后可以再次订阅并恢复为 active 状态。",
+      "steps": [
+        {
+          "action": "修改订阅",
+          "new_email": "{{email}}",
+          "new_keyword": "AI",
+          "expect": {
+            "non_empty": true,
+            "any_contains": ["成功"],
+            "none_contains": ["失败", "错误", "Exception", "Traceback"]
+          }
+        },
+        {
+          "action": "取消订阅",
+          "expect": {
+            "non_empty": true,
+            "none_contains": ["Exception", "Traceback"]
+          }
+        },
+        {
+          "action": "修改订阅",
+          "new_email": "{{email}}",
+          "new_keyword": "AI",
+          "expect": {
+            "non_empty": true,
+            "any_contains": ["成功"],
+            "none_contains": ["失败", "错误", "Exception", "Traceback"]
+          }
+        },
+        {
+          "action": "查询订阅",
+          "expect": {
+            "non_empty": true,
+            "any_contains": ["订阅生效中", "✅"],
+            "any_contains_all": ["邮箱", "主题"],
+            "must_have_fields": ["邮箱", "主题", "状态"],
+            "none_contains": ["已暂停", "inactive"]
+          }
+        }
+      ]
+    }
+  ]
+}

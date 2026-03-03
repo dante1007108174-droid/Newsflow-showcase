@@ -1,0 +1,518 @@
+schema_version: 1.0.0
+name: subscribe_using
+id: 7599988261473927214
+description: "配置订阅信息（现役）"
+mode: workflow
+icon: plugin_icon/workflow.png
+nodes:
+    - id: "100001"
+      type: start
+      title: 开始
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Start-v2.jpg
+      description: "工作流的起始节点，用于设定启动工作流需要的信息"
+      position:
+        x: 180
+        y: 377.95000000000005
+      parameters:
+        node_outputs:
+            action:
+                type: string
+                required: true
+                value: null
+            ex_email:
+                type: string
+                value: null
+            input_user_id:
+                type: string
+                required: true
+                value: null
+            new_email:
+                type: string
+                value: null
+            new_keyword:
+                type: string
+                value: null
+    - id: "900001"
+      type: end
+      title: 结束
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-End-v2.jpg
+      description: "工作流的最终节点，用于返回工作流运行后的结果信息"
+      position:
+        x: 2089.443627063872
+        y: 388.0765504591391
+      parameters:
+        content:
+            type: string
+            value:
+                content: '{{output1}}{{output2}}{{output3}}{{output}}'
+                type: literal
+        node_inputs:
+            - name: output1
+              input:
+                type: string
+                value:
+                    path: text
+                    ref_node: "1282947"
+            - name: output2
+              input:
+                type: string
+                value:
+                    path: text
+                    ref_node: "1083602"
+            - name: output3
+              input:
+                type: string
+                value:
+                    path: text
+                    ref_node: "1046744"
+            - name: output
+              input:
+                type: string
+                value:
+                    path: output
+                    ref_node: "154435"
+        streamingOutput: true
+        terminatePlan: useAnswerContent
+    - id: "1581884"
+      type: http
+      title: 修改订阅
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-HTTP.png
+      description: "用于发送API请求，从接口返回数据"
+      position:
+        x: 1150.4090076862465
+        y: 133.69345516787064
+      parameters:
+        apiInfo:
+            method: POST
+            url: https://ebvstftlpvvyzdzjshqa.supabase.co/rest/v1/rpc/update_subscription_universal
+        auth:
+            authData:
+                customData:
+                    addTo: header
+            authOpen: false
+            authType: BEARER_AUTH
+        body:
+            bodyData:
+                binary:
+                    fileURL:
+                        type: string
+                        value:
+                            content:
+                                blockID: ""
+                                name: ""
+                                source: block-output
+                            rawMeta:
+                                type: 1
+                            type: ref
+                rawText: |
+                    {
+                      "p_user_id": "{{block_output_100001.input_user_id}}",
+                      "p_target_email": "{{block_output_100001.ex_email}}",
+                      "p_new_email": "{{block_output_100001.new_email}}",
+                      "p_new_keyword": "{{block_output_100001.new_keyword}}"
+                    }
+            bodyType: RAW_TEXT
+        headers:
+            - name: apikey
+              input:
+                type: string
+                value: "<REDACTED>"
+            - name: Authorization
+              input:
+                type: string
+                value: "Bearer <REDACTED>"
+            - name: Content-Type
+              input:
+                type: string
+                value: "application/json"
+        node_outputs:
+            body:
+                type: string
+                value: null
+            headers:
+                type: string
+                value: null
+            statusCode:
+                type: integer
+                value: null
+        params: []
+        setting:
+            retryTimes: 0
+            timeout: 30
+        settingOnError:
+            dataOnErr: |-
+                {
+                    "body": "",
+                    "statusCode": 0,
+                    "headers": ""
+                }
+            switch: false
+    - id: "1083602"
+      type: code
+      title: 文本处理（修改）
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Code-v2.jpg
+      description: "编写代码，处理输入变量来生成返回值"
+      version: v2
+      position:
+        x: 1610.4090076862465
+        y: 145.69345516787064
+      parameters:
+        code: "async function main(params) {\n    console.log(\"=== DEBUG START ===\");\n    console.log(\"Full Params:\", JSON.stringify(params));\n\n    // 1. 自动解包：应对 params.params 的情况\n    let realParams = params.params || params;\n    \n    // 2. 模糊读取：不管你是 raw_response 还是 rawResponse，都能读到\n    // 同时也兼容有些人直接把 body 传进来了\n    let inputData = realParams.raw_response || realParams.rawResponse || realParams.body || realParams.data;\n    \n    console.log(\"Raw Input Data:\", inputData);\n\n    let finalMessage = \"操作成功\"; // 默认值\n\n    try {\n        if (!inputData) {\n            throw new Error(\"没有收到任何数据\");\n        }\n\n        // 3. 智能解析\n        // 如果它已经是对象(Object)，直接用\n        // 如果它是字符串(String)，尝试 JSON.parse\n        let dataObj = inputData;\n        if (typeof inputData === 'string') {\n            // 只有当字符串看起来像 JSON 时才解析\n            if (inputData.trim().startsWith('{')) {\n                dataObj = JSON.parse(inputData);\n            }\n        }\n\n        // 4. 提取 message 字段\n        // 优先找 message，找不到找 msg，再找不到就直接用整个对象转字符串\n        if (dataObj && (dataObj.message || dataObj.msg)) {\n            finalMessage = dataObj.message || dataObj.msg;\n        } else if (typeof dataObj === 'string') {\n            finalMessage = dataObj;\n        } else {\n            finalMessage = JSON.stringify(dataObj);\n        }\n\n    } catch (e) {\n        console.log(\"解析失败，降级处理:\", e.message);\n        // 如果实在解析不了，就把原始数据转成字符串硬返回，保证不为空\n        finalMessage = String(inputData || \"未知返回结果\");\n    }\n\n    // 5. 最终输出\n    console.log(\"Final Output Text:\", finalMessage);\n    return {\n        text: finalMessage\n    };\n}\n"
+        language: 5
+        node_inputs:
+            - name: raw_response
+              input:
+                value:
+                    path: body
+                    ref_node: "1581884"
+        node_outputs:
+            text:
+                type: string
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            switch: false
+            timeoutMs: 60000
+    - id: "1719756"
+      type: http
+      title: 取消订阅
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-HTTP.png
+      description: "用于发送API请求，从接口返回数据"
+      position:
+        x: 1150.4090076862465
+        y: 447.25234209081964
+      parameters:
+        apiInfo:
+            method: POST
+            url: https://ebvstftlpvvyzdzjshqa.supabase.co/rest/v1/rpc/unsubscribe_universal
+        auth:
+            authData:
+                customData:
+                    addTo: header
+            authOpen: false
+            authType: BEARER_AUTH
+        body:
+            bodyData:
+                binary:
+                    fileURL:
+                        type: string
+                        value:
+                            content:
+                                blockID: ""
+                                name: ""
+                                source: block-output
+                            rawMeta:
+                                type: 1
+                            type: ref
+                rawText: |
+                    {
+                      "p_user_id": "{{block_output_100001.input_user_id}}",
+                      "p_target_email": "{{block_output_100001.ex_email}}"
+                    }
+            bodyType: RAW_TEXT
+        headers:
+            - name: apikey
+              input:
+                type: string
+                value: "<REDACTED>"
+            - name: Authorization
+              input:
+                type: string
+                value: "Bearer <REDACTED>"
+            - name: Content-Type
+              input:
+                type: string
+                value: "application/json"
+        node_outputs:
+            body:
+                type: string
+                value: null
+            headers:
+                type: string
+                value: null
+            statusCode:
+                type: integer
+                value: null
+        params: []
+        setting:
+            retryTimes: 0
+            timeout: 30
+        settingOnError:
+            dataOnErr: |-
+                {
+                    "body": "",
+                    "statusCode": 0,
+                    "headers": ""
+                }
+            switch: false
+    - id: "1046744"
+      type: code
+      title: 文本处理（取消）
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Code-v2.jpg
+      description: "编写代码，处理输入变量来生成返回值"
+      version: v2
+      position:
+        x: 1627.597261310265
+        y: 459.25234209081964
+      parameters:
+        code: "async function main(params) {\n    console.log(\"=== DEBUG START ===\");\n    console.log(\"Full Params:\", JSON.stringify(params));\n\n    // 1. 自动解包：应对 params.params 的情况\n    let realParams = params.params || params;\n    \n    // 2. 模糊读取：不管你是 raw_response 还是 rawResponse，都能读到\n    // 同时也兼容有些人直接把 body 传进来了\n    let inputData = realParams.raw_response || realParams.rawResponse || realParams.body || realParams.data;\n    \n    console.log(\"Raw Input Data:\", inputData);\n\n    let finalMessage = \"操作成功\"; // 默认值\n\n    try {\n        if (!inputData) {\n            throw new Error(\"没有收到任何数据\");\n        }\n\n        // 3. 智能解析\n        // 如果它已经是对象(Object)，直接用\n        // 如果它是字符串(String)，尝试 JSON.parse\n        let dataObj = inputData;\n        if (typeof inputData === 'string') {\n            // 只有当字符串看起来像 JSON 时才解析\n            if (inputData.trim().startsWith('{')) {\n                dataObj = JSON.parse(inputData);\n            }\n        }\n\n        // 4. 提取 message 字段\n        // 优先找 message，找不到找 msg，再找不到就直接用整个对象转字符串\n        if (dataObj && (dataObj.message || dataObj.msg)) {\n            finalMessage = dataObj.message || dataObj.msg;\n        } else if (typeof dataObj === 'string') {\n            finalMessage = dataObj;\n        } else {\n            finalMessage = JSON.stringify(dataObj);\n        }\n\n    } catch (e) {\n        console.log(\"解析失败，降级处理:\", e.message);\n        // 如果实在解析不了，就把原始数据转成字符串硬返回，保证不为空\n        finalMessage = String(inputData || \"未知返回结果\");\n    }\n\n    // 5. 最终输出\n    console.log(\"Final Output Text:\", finalMessage);\n    return {\n        text: finalMessage\n    };\n}\n"
+        language: 5
+        node_inputs:
+            - name: raw_response
+              input:
+                value:
+                    path: body
+                    ref_node: "1719756"
+        node_outputs:
+            text:
+                type: string
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            switch: false
+            timeoutMs: 60000
+    - id: "1290443"
+      type: http
+      title: 查询订阅
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-HTTP.png
+      description: "用于发送API请求，从接口返回数据"
+      position:
+        x: 1150.4090076862465
+        y: 292.28409564532194
+      parameters:
+        apiInfo:
+            method: POST
+            url: https://ebvstftlpvvyzdzjshqa.supabase.co/rest/v1/rpc/query_subscription_universal
+        auth:
+            authData:
+                customData:
+                    addTo: header
+            authOpen: false
+            authType: BEARER_AUTH
+        body:
+            bodyData:
+                binary:
+                    fileURL:
+                        type: string
+                        value:
+                            content:
+                                blockID: ""
+                                name: ""
+                                source: block-output
+                            rawMeta:
+                                type: 1
+                            type: ref
+                rawText: |
+                    {
+                      "p_user_id": "{{block_output_100001.input_user_id}}",
+                      "p_target_email": "{{block_output_100001.ex_email}}"
+                    }
+            bodyType: RAW_TEXT
+        headers:
+            - name: apikey
+              input:
+                type: string
+                value: "<REDACTED>"
+            - name: Authorization
+              input:
+                type: string
+                value: "Bearer <REDACTED>"
+            - name: Content-Type
+              input:
+                type: string
+                value: "application/json"
+        node_outputs:
+            body:
+                type: string
+                value: null
+            headers:
+                type: string
+                value: null
+            statusCode:
+                type: integer
+                value: null
+        params: []
+        setting:
+            retryTimes: 0
+            timeout: 30
+        settingOnError:
+            dataOnErr: |-
+                {
+                    "body": "",
+                    "statusCode": 0,
+                    "headers": ""
+                }
+            switch: false
+    - id: "1282947"
+      type: code
+      title: 文本处理（查询）
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Code-v2.jpg
+      description: "编写代码，处理输入变量来生成返回值"
+      version: v2
+      position:
+        x: 1610.4090076862465
+        y: 304.28409564532194
+      parameters:
+        code: "async function main(params) {\n    // === 1. 究极解包 (应对各种嵌套) ===\n    let realParams = params.params || params;\n    let inputData = realParams.raw_response || realParams.body || realParams.data;\n    \n    // === 2. 解析逻辑 ===\n    let dataObj = null;\n    try {\n        if (typeof inputData === 'object' && inputData !== null) {\n            dataObj = inputData;\n        } else if (typeof inputData === 'string') {\n            // 简单清洗一下字符串，防止首尾有奇怪字符\n            dataObj = JSON.parse(inputData.trim());\n        }\n    } catch (e) {\n        return { text: `数据解析错误: ${e.message} (原始数据: ${String(inputData)})` };\n    }\n\n    if (!dataObj) {\n        return { text: \"未接收到有效数据。\" };\n    }\n\n    // === 3. 核心判断 (不使用全等 ===，改用宽松判断) ===\n    // 有时候 true 可能是字符串 \"true\"\n    const isSuccess = (String(dataObj.success) === 'true');\n\n    if (isSuccess && dataObj.data) {\n        const info = dataObj.data;\n        const statusMap = {\n            'active': '✅ 订阅生效中',\n            'inactive': '⏸️ 已暂停/取消'\n        };\n        // 默认显示 raw status，如果有映射就用映射\n        const statusText = statusMap[info.status] || `❓ ${info.status}`;\n\n        const displayText = `\U0001F4CB **当前订阅信息**\n\n\U0001F4E7 **邮箱**: ${info.email || '未绑定'}\n\U0001F511 **主题**: ${info.keyword || '未设置'}\n\U0001F4E1 **状态**: ${statusText}\n\U0001F552 **更新时间**: ${info.updated_at || '刚刚'}\n\n\U0001F4A1 如需修改，请说“修改订阅”；如需退订，请说“取消订阅”。`;\n        \n        return { text: displayText };\n    }\n\n    // 失败情况\n    const failMsg = dataObj.message || dataObj.msg || \"未找到订阅记录。\";\n    return { text: failMsg };\n}\n"
+        language: 5
+        node_inputs:
+            - name: raw_response
+              input:
+                value:
+                    path: body
+                    ref_node: "1290443"
+        node_outputs:
+            text:
+                type: string
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            switch: false
+            timeoutMs: 60000
+    - id: "110004"
+      type: condition
+      title: 选择器
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Condition-v2.jpg
+      description: "连接多个下游分支，若设定的条件成立则仅运行对应的分支，若均不成立则只运行“否则”分支"
+      position:
+        x: 640
+        y: 312.95000000000005
+      parameters:
+        branches:
+            - condition:
+                conditions:
+                    - left:
+                        input:
+                            value:
+                                path: action
+                                ref_node: "100001"
+                      operator: 1
+                      right:
+                        input:
+                            type: string
+                            value: "修改订阅"
+                logic: 2
+            - condition:
+                conditions:
+                    - left:
+                        input:
+                            value:
+                                path: action
+                                ref_node: "100001"
+                      operator: 1
+                      right:
+                        input:
+                            type: string
+                            value: "查询订阅"
+                logic: 2
+            - condition:
+                conditions:
+                    - left:
+                        input:
+                            value:
+                                path: action
+                                ref_node: "100001"
+                      operator: 1
+                      right:
+                        input:
+                            type: string
+                            value: "取消订阅"
+                logic: 2
+    - id: "109967"
+      type: output
+      title: 输出
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Output-v2.jpg
+      description: "节点从“消息”更名为“输出”，支持中间过程的消息输出，支持流式和非流式两种方式"
+      position:
+        x: 823.2258556466937
+        y: 886.5008364845303
+      parameters:
+        callTransferVoice: true
+        chatHistoryWriting: historyWrite
+        content:
+            type: string
+            value:
+                content: 请问您是要查询、修改还是取消订阅呢？
+                type: literal
+        streamingOutput: true
+    - id: "154435"
+      type: text
+      title: 文本处理
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-StrConcat-v2.jpg
+      description: "用于处理多个字符串类型变量的格式"
+      position:
+        x: 1339.3168611903923
+        y: 725.5441782271142
+      parameters:
+        concatParams:
+            - name: concatResult
+              input:
+                type: string
+                value: "请问您是要查询、修改还是取消订阅呢？"
+            - name: arrayItemConcatChar
+              input:
+                type: string
+                value: "，"
+            - name: allArrayItemConcatChars
+              input:
+                type: list
+                items:
+                    type: object
+                    value: null
+                value:
+                    - isDefault: true
+                      label: "换行"
+                      value: "\n"
+                    - isDefault: true
+                      label: "制表符"
+                      value: "\t"
+                    - isDefault: true
+                      label: "句号"
+                      value: "。"
+                    - isDefault: true
+                      label: "逗号"
+                      value: "，"
+                    - isDefault: true
+                      label: "分号"
+                      value: "；"
+                    - isDefault: true
+                      label: "空格"
+                      value: " "
+        method: concat
+        node_outputs:
+            output:
+                type: string
+                required: true
+                value: null
+edges:
+    - source_node: "100001"
+      target_node: "110004"
+    - source_node: "1046744"
+      target_node: "900001"
+    - source_node: "1282947"
+      target_node: "900001"
+    - source_node: "1083602"
+      target_node: "900001"
+    - source_node: "154435"
+      target_node: "900001"
+    - source_node: "110004"
+      target_node: "1581884"
+      source_port: "true"
+    - source_node: "1581884"
+      target_node: "1083602"
+    - source_node: "110004"
+      target_node: "1719756"
+      source_port: true_2
+    - source_node: "1719756"
+      target_node: "1046744"
+    - source_node: "110004"
+      target_node: "1290443"
+      source_port: true_1
+    - source_node: "1290443"
+      target_node: "1282947"
+    - source_node: "110004"
+      target_node: "154435"
+      source_port: "false"

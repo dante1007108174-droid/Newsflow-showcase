@@ -1,0 +1,285 @@
+schema_version: 1.0.0
+name: send_mail_using
+id: 7600064206813347881
+description: "发送测试邮件（现役）"
+mode: workflow
+icon: plugin_icon/workflow.png
+nodes:
+    - id: "100001"
+      type: start
+      title: 开始
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Start-v2.jpg
+      description: "工作流的起始节点，用于设定启动工作流需要的信息"
+      position:
+        x: 180
+        y: 118.65
+      parameters:
+        node_outputs:
+            input_email:
+                type: string
+                value: null
+            input_keyword:
+                type: string
+                value: null
+            input_user_id:
+                type: string
+                required: true
+                value: null
+    - id: "900001"
+      type: end
+      title: 结束
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-End-v2.jpg
+      description: "工作流的最终节点，用于返回工作流运行后的结果信息"
+      position:
+        x: 2940
+        y: 105.65
+      parameters:
+        content:
+            type: string
+            value:
+                content: '{{output}}'
+                type: literal
+        node_inputs:
+            - name: output
+              input:
+                type: string
+                value:
+                    path: output
+                    ref_node: "189485"
+        streamingOutput: true
+        terminatePlan: useAnswerContent
+    - id: "1581884"
+      type: http
+      title: 查询id
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-HTTP.png
+      description: "用于发送API请求，从接口返回数据"
+      position:
+        x: 627.4407582938389
+        y: 93.65
+      parameters:
+        apiInfo:
+            method: POST
+            url: https://ebvstftlpvvyzdzjshqa.supabase.co/rest/v1/rpc/attempt_send_test_email
+        auth:
+            authData:
+                customData:
+                    addTo: header
+            authOpen: false
+            authType: BEARER_AUTH
+        body:
+            bodyData:
+                binary:
+                    fileURL:
+                        type: string
+                        value:
+                            content:
+                                blockID: ""
+                                name: ""
+                                source: block-output
+                            rawMeta:
+                                type: 1
+                            type: ref
+                rawText: |
+                    {
+                      "p_user_id": "{{block_output_100001.input_user_id}}",
+                      "p_input_email": "{{block_output_100001.input_email}}",
+                      "p_input_keyword": "{{block_output_100001.input_keyword}}"
+                    }
+            bodyType: RAW_TEXT
+        headers:
+            - name: apikey
+              input:
+                type: string
+                value: "<REDACTED>"
+            - name: Authorization
+              input:
+                type: string
+                value: "Bearer <REDACTED>"
+            - name: Content-Type
+              input:
+                type: string
+                value: "application/json"
+        node_outputs:
+            body:
+                type: string
+                value: null
+            headers:
+                type: string
+                value: null
+            statusCode:
+                type: integer
+                value: null
+        params: []
+        setting:
+            retryTimes: 0
+            timeout: 30
+        settingOnError:
+            dataOnErr: |-
+                {
+                    "body": "",
+                    "statusCode": 0,
+                    "headers": ""
+                }
+            switch: false
+    - id: "111858"
+      type: code
+      title: 代码
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Code-v2.jpg
+      description: "编写代码，处理输入变量来生成返回值"
+      version: v2
+      position:
+        x: 1100
+        y: 105.65
+      parameters:
+        code: "import json\n\nasync def main(args):\n    # 初始化默认返回结构\n    ret = {\n        \"allowed\": False,\n        \"msg\": \"\",\n        \"email\": \"\",\n        \"keyword\": \"\"\n    }\n    \n    try:\n        # 1. 安全获取 params\n        # 不使用 args['params'] 或 'params' in args，防止触发底层对象的奇怪行为\n        # 直接尝试用 get 获取，如果为 None 则说明 args 本身可能就是扁平的\n        params = args.get('params')\n        if params is None:\n            params = args\n            \n        # 2. 安全获取 response_body\n        body_str = params.get('response_body')\n        \n        if not body_str:\n            ret['msg'] = \"未获取到 response_body (Input Empty)\"\n            return ret\n\n        # 3. 鲁棒的 JSON 解析\n        data = None\n        if isinstance(body_str, dict):\n            data = body_str\n        else:\n            try:\n                # 第一次解析\n                data = json.loads(body_str)\n                # 处理双重转义字符串情况: \"{\\\"key\\\":...}\" -> \"{\"key\":...}\" (str) -> dict\n                if isinstance(data, str):\n                    data = json.loads(data)\n            except Exception as e:\n                ret['msg'] = f\"JSON格式解析失败: {str(e)}\"\n                return ret\n\n        # 4. 安全赋值\n        if isinstance(data, dict):\n            # bool() 转换确保类型正确\n            ret['allowed'] = bool(data.get('allowed'))\n            \n            # str() + or \"\" 确保即使是 None 也能转为空字符串\n            ret['email'] = str(data.get('email') or \"\")\n            ret['keyword'] = str(data.get('keyword') or \"\")\n            \n            # 优先取 msg，没有则取 message\n            raw_msg = data.get('msg')\n            if not raw_msg:\n                raw_msg = data.get('message')\n            ret['msg'] = str(raw_msg) if raw_msg else \"操作成功\"\n        else:\n            ret['msg'] = f\"解析结果不是字典类型，而是: {type(data)}\"\n\n    except Exception as e:\n        # 捕获所有代码逻辑中的未知错误\n        ret['msg'] = f\"系统执行异常: {str(e)}\"\n        \n    return ret\n"
+        language: 3
+        node_inputs:
+            - name: response_body
+              input:
+                value:
+                    path: body
+                    ref_node: "1581884"
+        node_outputs:
+            allowed:
+                type: boolean
+                value: null
+            email:
+                type: string
+                value: null
+            keyword:
+                type: string
+                value: null
+            msg:
+                type: string
+                value: null
+        settingOnError:
+            processType: 1
+            retryTimes: 0
+            switch: false
+            timeoutMs: 60000
+    - id: "197637"
+      type: condition
+      title: 选择器_1
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Condition-v2.jpg
+      description: "连接多个下游分支，若设定的条件成立则仅运行对应的分支，若均不成立则只运行“否则”分支"
+      position:
+        x: 1560
+        y: 92.95000000000002
+      parameters:
+        branches:
+            - condition:
+                conditions:
+                    - left:
+                        input:
+                            value:
+                                path: allowed
+                                ref_node: "111858"
+                      operator: 1
+                      right:
+                        input:
+                            type: boolean
+                            value: true
+                logic: 2
+    - id: "176802"
+      type: output
+      title: 输出_1
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Output-v2.jpg
+      description: "节点从“消息”更名为“输出”，支持中间过程的消息输出，支持流式和非流式两种方式"
+      position:
+        x: 2480
+        y: 211.29999999999998
+      parameters:
+        callTransferVoice: true
+        chatHistoryWriting: historyWrite
+        content:
+            type: string
+            value:
+                content: '{{output}}'
+                type: literal
+        node_inputs:
+            - name: output
+              input:
+                value:
+                    path: msg
+                    ref_node: "111858"
+        streamingOutput: true
+    - id: "1697697"
+      type: output
+      title: 输出_2
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Output-v2.jpg
+      description: "节点从“消息”更名为“输出”，支持中间过程的消息输出，支持流式和非流式两种方式"
+      position:
+        x: 2020
+        y: 0
+      parameters:
+        callTransferVoice: true
+        chatHistoryWriting: historyWrite
+        content:
+            type: string
+            value:
+                content: '{{output}}'
+                type: literal
+        node_inputs:
+            - name: output
+              input:
+                value:
+                    path: msg
+                    ref_node: "111858"
+        streamingOutput: true
+    - id: "189485"
+      type: subflow
+      title: generate_send_all_using
+      icon: https://lf3-static.bytednsdoc.com/obj/eden-cn/dvsmryvd_avi_dvsm/ljhwZthlaukjlkulzlp/icon/icon-Workflow-v2.jpg
+      description: "生成并所有主题新闻（现役）"
+      position:
+        x: 2480
+        y: -5.6499999999999915
+      parameters:
+        inputDefs:
+            - input: {}
+              name: keyword
+              required: true
+              type: string
+            - input: {}
+              name: mail
+              required: true
+              type: string
+        node_inputs:
+            - name: keyword
+              input:
+                value:
+                    path: keyword
+                    ref_node: "111858"
+            - name: mail
+              input:
+                value:
+                    path: email
+                    ref_node: "111858"
+        node_outputs:
+            output:
+                type: string
+                value: null
+        settingOnError: {}
+        spaceId: "7486797337982140435"
+        type: 1
+        workflowId: "7600837645149044755"
+        workflowVersion: v0.0.7
+edges:
+    - source_node: "100001"
+      target_node: "1581884"
+    - source_node: "176802"
+      target_node: "900001"
+    - source_node: "189485"
+      target_node: "900001"
+    - source_node: "1581884"
+      target_node: "111858"
+    - source_node: "111858"
+      target_node: "197637"
+    - source_node: "197637"
+      target_node: "1697697"
+      source_port: "true"
+    - source_node: "197637"
+      target_node: "176802"
+      source_port: "false"
+    - source_node: "1697697"
+      target_node: "189485"
