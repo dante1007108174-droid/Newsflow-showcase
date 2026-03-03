@@ -24,6 +24,9 @@ Desktop.ini
 tmp/
 temp/
 
+# Windows accidental special filename
+nul
+
 # Test artifacts
 tests/reports/
 **/__pycache__/
