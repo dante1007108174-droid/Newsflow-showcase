@@ -1,18 +1,22 @@
-# AI 每日简报 / Daily AI News (Public Showcase)
+# NewsFlow.ai / AI 每日简报
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-精选全球 AI 资讯，每日早晨 8 点准时送达。告别信息过载，只关注真正重要的科技变革。  
-Selected global AI news, delivered promptly at 8 AM every morning.
+NewsFlow.ai 是一个 AI 驱动的新闻聚合与推送助手。它从十几个中文媒体 RSS 源自动抓取内容，
+经过两级过滤（代码规则层 + AI 语义层），压缩成每天 5-8 条高质量摘要，
+通过邮件主动推送或对话即时查询送达用户。
 
-> 这是**公开展示镜像仓库**（Public Showcase Mirror），用于展示产品与工程实现。  
-> 生产环境（Zeabur）仍使用原仓库，本仓库不参与生产部署。
+核心解决的问题是**信息焦虑**：用户每天面对海量科技/财经资讯，
+既怕错过重要信息（FOMO），又没有时间逐条筛选。
+产品把“人找信息”变成“信息找人”，用 AI 完成筛选与压缩，
+让用户每天花 2 分钟就能掌握关键动态。
 
 ## 功能特点 (Features)
 
-- 📧 **简报测试发送**：支持按主题触发新闻简报测试流程。
+- 📨 **每日日报推送**：每天自动输出 5-8 条高质量摘要，主动送达用户邮箱。
+- 📧 **按主题即时推送**：支持按 AI / 财经 / 科技主题触发测试简报发送。
 - 💬 **AI 对话浮窗**：支持流式输出、连续对话、移动端键盘适配。
-- 🎯 **主题覆盖**：支持 AI / 财经 / 科技 等主题。
+- 🧠 **两级智能过滤**：代码规则层做基础筛选，AI 语义层做质量压缩。
 - 🎨 **响应式 UI**：桌面端与移动端统一体验。
 
 ## 技术栈 (Tech Stack)
@@ -35,7 +39,7 @@ newsflow-showcase/
 │   ├── js/                 # 前端逻辑
 │   └── assets/             # 静态资源
 ├── workflow/               # 流程导出（已脱敏）
-├── docs/prd...             # PRD 文档（仅文本文件）
+├── docs/                   # 文档目录
 ├── tests/                  # 自动化测试脚本与样例
 └── README.md
 ```
@@ -66,7 +70,7 @@ npm start
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `ALLOWED_ORIGINS`
 
-## 安全与公开策略 (Security for Public Repo)
+## 安全提示 (Security)
 
 - 本仓库不包含真实 API Key / Token / 私密配置。
 - `workflow/` 已做脱敏处理（如 `Authorization`, `Bearer`, token 字段）。
