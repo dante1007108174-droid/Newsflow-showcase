@@ -257,7 +257,7 @@ nodes:
             - name: password
               input:
                 type: string
-                value: "fmyvepozxmpnbfid"
+                value: "<REDACTED>"
             - name: subject
               input:
                 type: string
