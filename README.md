@@ -4,6 +4,12 @@
 
 NewsFlow.ai 是一款由 AI 驱动的新闻聚合与推送助手。它从16个中文主流媒体 RSS 源自动抓取内容，经过两级过滤，压缩成每日 8 条高质量摘要 + 10 条快速查阅的简报内容，通过邮件推送或对话查询的方式送达用户。
 
+## 界面预览 (Screenshots)
+
+| 邮件推送页面 | 对话浮窗页面 | Bot 页面 |
+|---|---|---|
+| ![邮件推送页面](frontend/assets/screenshots/mail.png) | ![对话浮窗页面](frontend/assets/screenshots/chat.png) | ![Bot 页面](frontend/assets/screenshots/bot.png) |
+
 ## 功能特点 (Features)
 
 - 🎯 **日报三大主题选择**：精准覆盖AI、财经、科技三大热门领域。
