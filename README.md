@@ -72,7 +72,7 @@ npm start
 
 - 本仓库不包含真实 API Key / Token / 私密配置。
 - `workflow/` 已做脱敏处理（如 `Authorization`, `Bearer`, token 字段）。
-- `docs` 只保留 PRD 文档（文本文件），不公开测试数据二进制文件。
+- `docs` 仅保留各模块最新版本文档（文本文件），不公开测试数据二进制文件。
 - 严禁提交 `backend/.env`。
 
 ## 许可证 (License)
