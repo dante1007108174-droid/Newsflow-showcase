@@ -1,29 +1,94 @@
-# NewsFlow.ai / AI 每日简报
+# NewsFlow.ai — AI 每日简报
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-NewsFlow.ai 是一款由 AI 驱动的新闻聚合与推送助手。它从16个中文主流媒体 RSS 源自动抓取内容，经过两级过滤，压缩成每日 8 条高质量摘要 + 10 条快速查阅的简报内容，通过邮件推送或对话查询的方式送达用户。
+> 每天 5 分钟，获取 AI / 财经 / 科技领域核心资讯。
 
-## 界面预览 (Screenshots)
+NewsFlow.ai 是一款面向信息密集型用户的 AI 资讯简报产品。它从 16 个中文主流媒体 RSS 源自动抓取内容，经两级过滤与 AI 摘要，压缩成每日 **8 条精选摘要 + 10 条快速速览**，通过 **邮件定时推送** 或 **对话即时查询** 两种方式送达用户。
 
-| 产品主页 | Bot 页面 | 邮件简报 |
-|---|---|---|
-| ![产品主页](frontend/assets/screenshots/homepage.png) | ![Bot 页面](frontend/assets/screenshots/bot-screen.png) | ![邮件简报](frontend/assets/screenshots/newsletter.png) |
+🔗 **[产品主页](https://newsflow-ai.zeabur.app/)**
 
-## 功能特点 (Features)
+### 核心数据
 
-- 🎯 **日报三大主题选择**：精准覆盖AI、财经、科技三大热门领域。
-- 📧 **每日新闻邮件测试发送**：支持实时发送指定主题的新闻简报测试邮件。
-- 💬 **Coze AI助手支持**：集成Coze Chat SDK，提供智能对话交互。
-- 🎨 **精美的响应式 UI**：采用 Tailwind CSS 构建的现代化、多端适配的 UI 界面。
+| 指标                 | 数据                                        |
+| -------------------- | ------------------------------------------- |
+| 种子用户 NPS         | **50%**                                     |
+| 端到端信息压缩比     | **125:1**（即时查询）/ **16:1**（定时推送） |
+| 系统响应时间         | **4s**（优化前 40s）                        |
+| Agent 意图路由准确率 | **100%**（43/43 测试用例）                  |
+| 自动化测试覆盖       | **8 套链路 / 213 条用例**                   |
 
-## 技术栈 (Tech Stack)
+---
 
-- **Frontend**: HTML5, Tailwind CSS, Vanilla JS
-- **Backend**: Node.js, Express, Axios
-- **Workflow / Data**: Coze Workflow, Supabase (via env)
+## 界面预览
 
-## 项目结构 (Project Structure)
+| 产品主页                                              | 对话界面                                                | 邮件简报                                                |
+| ----------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------- |
+| ![产品主页](frontend/assets/screenshots/homepage.png) | ![对话界面](frontend/assets/screenshots/bot-screen.png) | ![邮件简报](frontend/assets/screenshots/newsletter.png) |
+
+---
+
+## 产品功能
+
+- 🎯 **三大主题个性化订阅** — 覆盖 AI、财经、科技领域，用户按需选择
+- 📧 **每日邮件定时推送** — 结构化简报自动送达，无需主动查找
+- 💬 **自然语言即时查询** — 对话式交互完成查新闻、订新闻、退订全流程
+- 🤖 **Agent 智能对话管理** — 意图路由 + 参数提取 + 多轮对话，支持复杂交互场景
+- 📊 **AI 内容质量保障** — 两级过滤 + 事实导向摘要，用户反馈"中立、客观"
+
+---
+
+## 产品文档
+
+本仓库包含完整的产品工作文档，展示从需求定义到上线复盘的全流程：
+
+| 文档                                                                    | 说明                                             |
+| ----------------------------------------------------------------------- | ------------------------------------------------ |
+| [📋 PRD 产品需求文档](docs/01-prd/01-prd%20v3.6.md)                     | 产品定位、功能规划、信息架构                     |
+| [📊 种子用户反馈报告](docs/01-prd/附件-种子用户反馈报告.md)             | 种子用户测试结果与数据分析                       |
+| [🔍 需求调研报告](docs/02-需求调研报告/02-需求调研报告v2.0.md)          | 用户痛点分析与需求假设验证                       |
+| [⚔️ 竞品分析](docs/03-竞品分析报告/03-竞品分析.md)                      | 市场竞品对比与差异化定位                         |
+| [🧠 模型选型分析](docs/04-模型选项分析报告/04-模型选型分析报告-v2.0.md) | 多模型 7 维度量化评测与选型决策                  |
+| [✏️ Prompt 工程手册](docs/05-Prompt工程手册/05-Prompt工程手册-v3.0.md)  | 系统提示词设计与迭代记录                         |
+| [📈 评测与质量报告](docs/06-评测与质量报告/06-评测与质量报告-v3.0.md)   | 自动化测试体系、Bad Case 分析、LLM-as-Judge 评测 |
+| [🔄 项目复盘总结](docs/10-项目复盘总结/05-项目复盘总结-v2.1.md)         | 项目全过程复盘与经验沉淀                         |
+
+---
+
+## 技术架构
+
+```
+用户 ──→ 前端 (HTML/Tailwind/JS)
+           │
+           ├── SSE 流式对话 ──→ Node.js/Express 后端
+           │                        │
+           │                        ├── Coze Workflow（意图路由/内容生成）
+           │                        ├── Supabase（订阅数据存储）
+           │                        └── n8n（定时任务调度）
+           │
+           └── 邮件推送 ──→ 定时生成 + 模板渲染 + 邮件发送
+```
+
+### 技术栈
+
+- **前端**：HTML5 · Tailwind CSS · Vanilla JS
+- **后端**：Node.js · Express · Axios
+- **AI 工作流**：Coze Workflow（4 条工作流：即时查询 / 订阅管理 / 推送测试 / 定时生成）
+- **数据**：Supabase（订阅与反馈数据）
+- **调度**：n8n（定时任务编排）
+- **部署**：Zeabur
+
+### 模型分层策略
+
+| 层级   | 职责                  | 说明                     |
+| ------ | --------------------- | ------------------------ |
+| 调度层 | 意图识别 + 参数提取   | 轻量模型，快速响应       |
+| 改写层 | Query 改写 + 内容过滤 | 中等模型，平衡质量与速度 |
+| 生成层 | 摘要生成 + 简报编排   | 重量模型，保证内容质量   |
+
+---
+
+## 项目结构
 
 ```text
 newsflow-showcase/
@@ -35,46 +100,42 @@ newsflow-showcase/
 ├── frontend/               # 前端静态资源
 │   ├── index.html          # 主页面
 │   ├── js/                 # 前端逻辑
-│   └── assets/             # 静态资源
-├── workflow/               # 流程导出（已脱敏）
-├── docs/                   # 文档目录
-├── tests/                  # 自动化测试脚本与样例
+│   └── assets/             # 静态资源与截图
+├── workflow/               # Coze & n8n 工作流导出（已脱敏）
+├── docs/                   # 产品文档（PRD / 评测报告 / 复盘等）
+├── tests/                  # 自动化测试脚本（8套测试链路）
 └── README.md
 ```
 
-## 快速开始 (Quick Start)
+---
 
-1. 安装并启动后端
+## 快速开始
 
 ```bash
-cd backend
+# 1. 克隆仓库
+git clone https://github.com/dante1007108174-droid/Newsflow-showcase.git
+
+# 2. 安装依赖并启动
+cd newsflow-showcase/backend
+cp .env.example .env   # 填写你自己的配置
 npm install
 npm start
+
+# 3. 访问
+open http://localhost:3000/
 ```
 
-2. 打开页面：`http://localhost:3000/`
+---
 
-## 配置说明 (Environment)
+## 安全提示
 
-复制 `backend/.env.example` 为 `backend/.env` 并填写你自己的配置。
+- 本仓库不包含真实 API Key / Token / 私密配置
+- `workflow/` 已做脱敏处理
+- `docs/` 仅保留文本文档，不含测试数据二进制文件
+- `backend/.env` 已加入 `.gitignore`
 
-常用变量：
+---
 
-- `COZE_API_TOKEN`
-- `COZE_WORKFLOW_ID`
-- `COZE_BASE_URL`
-- `COZE_BOT_ID`
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `ALLOWED_ORIGINS`
-
-## 安全提示 (Security)
-
-- 本仓库不包含真实 API Key / Token / 私密配置。
-- `workflow/` 已做脱敏处理（如 `Authorization`, `Bearer`, token 字段）。
-- `docs` 仅保留各模块最新版本文档（文本文件），不公开测试数据二进制文件。
-- 严禁提交 `backend/.env`。
-
-## 许可证 (License)
+## 许可证
 
 [MIT](LICENSE)
